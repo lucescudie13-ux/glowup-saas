@@ -1,0 +1,25 @@
+-- seed.sql
+-- Optional demo data. The default stats + nutrition goals are created
+-- automatically by handle_new_user() on signup, so seeding is rarely needed.
+--
+-- To seed demo rows for an EXISTING user, set their id and run the block.
+-- (Left commented to avoid inserting against a non-existent user.)
+
+-- do $$
+-- declare uid uuid := '00000000-0000-0000-0000-000000000000'; -- replace me
+-- begin
+--   insert into public.quests (user_id, name, category) values
+--     (uid, 'Lire 20 pages', 'Culture'),
+--     (uid, 'Boire 2L d''eau', 'Santé');
+--
+--   insert into public.routines (user_id, name, minutes, category) values
+--     (uid, 'Méditation', 10, 'Mental'),
+--     (uid, 'Étirements', 15, 'Sport');
+--
+--   insert into public.objectives (user_id, period, name, actions) values
+--     (uid, 'monthly', 'Finir le MVP', 'Bloquer 3 créneaux par semaine'),
+--     (uid, 'yearly',  'Lancer mon SaaS', 'Découper en étapes trimestrielles');
+--
+--   insert into public.dangers (user_id, name, category, impact) values
+--     (uid, 'Scroll réseaux le matin', 'Temps', 4);
+-- end $$;
