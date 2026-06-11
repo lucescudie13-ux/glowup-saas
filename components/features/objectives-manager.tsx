@@ -32,16 +32,30 @@ export function ObjectivesManager({ initialItems }: { initialItems: Objective[] 
     }
   }
 
-  async function setProgress(o: Objective, progress: number) {
+  // Update the bar instantly while dragging (no network).
+  function changeProgress(o: Objective, progress: number) {
     setItems((prev) => prev.map((i) => (i.id === o.id ? { ...i, progress } : i)));
-    await api.patch(`/api/objectives/${o.id}`, { progress });
-    router.refresh();
+  }
+
+  // Persist once, when the slider is released.
+  async function commitProgress(o: Objective, progress: number) {
+    try {
+      await api.patch(`/api/objectives/${o.id}`, { progress });
+      router.refresh();
+    } catch {
+      router.refresh();
+    }
   }
 
   async function remove(id: string) {
-    await api.del(`/api/objectives/${id}`);
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    router.refresh();
+    const snapshot = items;
+    setItems((prev) => prev.filter((i) => i.id !== id)); // optimistic
+    try {
+      await api.del(`/api/objectives/${id}`);
+      router.refresh();
+    } catch {
+      setItems(snapshot);
+    }
   }
 
   return (
@@ -78,7 +92,17 @@ export function ObjectivesManager({ initialItems }: { initialItems: Objective[] 
               </div>
               {o.actions && <p className="card-sub" style={{ margin: "0 0 6px" }}>{o.actions}</p>}
               <ProgressBar value={o.progress} />
-              <input type="range" min={0} max={100} value={o.progress} onChange={(e) => setProgress(o, Number(e.target.value))} style={{ width: "100%", marginTop: 8 }} />
+              <input
+                type="range"
+                min={0}
+                max={100}
+                value={o.progress}
+                onChange={(e) => changeProgress(o, Number(e.target.value))}
+                onMouseUp={(e) => commitProgress(o, Number((e.target as HTMLInputElement).value))}
+                onTouchEnd={(e) => commitProgress(o, Number((e.target as HTMLInputElement).value))}
+                onKeyUp={(e) => commitProgress(o, Number((e.target as HTMLInputElement).value))}
+                style={{ width: "100%", marginTop: 8 }}
+              />
             </div>
           ))}
         </div>

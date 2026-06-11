@@ -14,6 +14,7 @@ export default async function RoutinePage() {
         initialItems={items}
         withMinutes
         withCategory
+        reorderable
         emptyIcon="🔁"
         emptyText="Aucune routine. Ajoute une habitude."
         addLabel="Ajouter"

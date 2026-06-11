@@ -25,6 +25,22 @@ export function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+/** Shift an ISO date (YYYY-MM-DD) by a number of days. */
+export function addDaysISO(iso: string, days: number): string {
+  const d = new Date(`${iso}T00:00:00`);
+  d.setDate(d.getDate() + days);
+  return d.toISOString().slice(0, 10);
+}
+
+/** Short human label for an ISO date, e.g. "lun. 9 juin". */
+export function formatDayLabel(iso: string): string {
+  return new Date(`${iso}T00:00:00`).toLocaleDateString("fr-FR", {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+  });
+}
+
 export function formatRelative(ts: string | number): string {
   const d = new Date(ts);
   const now = new Date();

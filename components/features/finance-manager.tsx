@@ -4,32 +4,38 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { money, todayISO } from "@/lib/utils";
-import { ProgressBar } from "@/components/ui/progress-bar";
 import { EmptyState } from "@/components/ui/empty-state";
-import type { FinanceEntry, FinancialGoal, FinanceType } from "@/types";
+import type { FinanceEntry, FinanceType } from "@/types";
 
 interface Props {
   initialEntries: FinanceEntry[];
-  initialGoals: FinancialGoal[];
 }
 
-export function FinanceManager({ initialEntries, initialGoals }: Props) {
+export function FinanceManager({ initialEntries }: Props) {
   const router = useRouter();
   const [entries, setEntries] = useState<FinanceEntry[]>(initialEntries);
-  const [goals, setGoals] = useState<FinancialGoal[]>(initialGoals);
 
+  // One-off movement form
   const [type, setType] = useState<FinanceType>("expense");
   const [name, setName] = useState("");
   const [amount, setAmount] = useState("");
   const [category, setCategory] = useState("");
 
-  const [goalName, setGoalName] = useState("");
-  const [goalTarget, setGoalTarget] = useState("");
+  // Recurring expense form
+  const [recName, setRecName] = useState("");
+  const [recAmount, setRecAmount] = useState("");
+  const [recCategory, setRecCategory] = useState("");
 
   const month = todayISO().slice(0, 7);
-  const inMonth = entries.filter((e) => e.entry_date.slice(0, 7) === month);
-  const income = inMonth.filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
-  const spent = inMonth.filter((e) => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
+  const oneOff = entries.filter((e) => !e.recurring);
+  const recurring = entries.filter((e) => e.recurring);
+
+  const monthOneOff = oneOff.filter((e) => e.entry_date.slice(0, 7) === month);
+  const income = monthOneOff.filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
+  const oneOffSpent = monthOneOff.filter((e) => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
+  const recurringSpent = recurring.reduce((s, e) => s + Number(e.amount), 0);
+  const spent = oneOffSpent + recurringSpent;
+  const net = income - spent;
 
   async function addEntry(e: React.FormEvent) {
     e.preventDefault();
@@ -42,46 +48,57 @@ export function FinanceManager({ initialEntries, initialGoals }: Props) {
     router.refresh();
   }
 
-  async function removeEntry(id: string) {
-    await api.del(`/api/finance-entries/${id}`);
-    setEntries((prev) => prev.filter((e) => e.id !== id));
-    router.refresh();
-  }
-
-  async function addGoal(e: React.FormEvent) {
+  async function addRecurring(e: React.FormEvent) {
     e.preventDefault();
-    if (!goalName.trim() || !goalTarget) return;
-    const created = await api.post<FinancialGoal>("/api/financial-goals", {
-      name: goalName, target: Number(goalTarget),
+    if (!recName.trim() || !recAmount) return;
+    const created = await api.post<FinanceEntry>("/api/finance-entries", {
+      type: "expense", name: recName, amount: Number(recAmount), category: recCategory || "Abonnement", recurring: true,
     });
-    setGoals((prev) => [...prev, created]);
-    setGoalName(""); setGoalTarget("");
+    setEntries((prev) => [created, ...prev]);
+    setRecName(""); setRecAmount(""); setRecCategory("");
     router.refresh();
   }
 
-  async function updateSaved(g: FinancialGoal, saved: number) {
-    setGoals((prev) => prev.map((x) => (x.id === g.id ? { ...x, saved } : x)));
-    await api.patch(`/api/financial-goals/${g.id}`, { saved });
-    router.refresh();
-  }
-
-  async function removeGoal(id: string) {
-    await api.del(`/api/financial-goals/${id}`);
-    setGoals((prev) => prev.filter((g) => g.id !== id));
-    router.refresh();
+  async function removeEntry(id: string) {
+    const snapshot = entries;
+    setEntries((prev) => prev.filter((e) => e.id !== id)); // optimistic
+    try {
+      await api.del(`/api/finance-entries/${id}`);
+      router.refresh();
+    } catch {
+      setEntries(snapshot);
+    }
   }
 
   return (
     <>
-      <div className="kpi-grid" style={{ marginBottom: 16 }}>
-        <div className="kpi-card"><div className="kpi-label">Revenus du mois</div><div className="kpi-value">{money(income)}</div></div>
-        <div className="kpi-card"><div className="kpi-label">Dépenses du mois</div><div className="kpi-value">{money(spent)}</div></div>
-        <div className="kpi-card"><div className="kpi-label">Solde net</div><div className="kpi-value">{money(income - spent)}</div></div>
+      {/* ===== Synthèse du mois ===== */}
+      <div className="grid grid-stats" style={{ marginBottom: 16 }}>
+        <div className="kpi">
+          <div className="kpi-label">Revenus du mois</div>
+          <div className="kpi-value money-positive">{money(income)}</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-label">Dépenses du mois</div>
+          <div className="kpi-value money-negative">{money(spent)}</div>
+          <div className="kpi-trend">dont {money(recurringSpent)} récurrentes</div>
+        </div>
+        <div className="kpi">
+          <div className="kpi-label">Résultat du mois</div>
+          <div className={`kpi-value ${net >= 0 ? "money-positive" : "money-negative"}`}>{money(net)}</div>
+          <div className="kpi-trend">{net >= 0 ? "Surplus 🎉" : "Déficit"}</div>
+        </div>
       </div>
 
+      {/* ===== Mouvements ponctuels ===== */}
       <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-head"><h2 className="card-title">💸 Mouvements</h2></div>
-        <form onSubmit={addEntry} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+        <div className="card-head">
+          <div>
+            <h2 className="card-title">💸 Mouvements</h2>
+            <p className="card-sub">Revenus et dépenses ponctuels du mois.</p>
+          </div>
+        </div>
+        <form onSubmit={addEntry} className="checklist-add">
           <select className="auth-input" style={{ flex: "0 1 120px" }} value={type} onChange={(e) => setType(e.target.value as FinanceType)}>
             <option value="expense">Dépense</option>
             <option value="income">Revenu</option>
@@ -89,51 +106,63 @@ export function FinanceManager({ initialEntries, initialGoals }: Props) {
           <input className="auth-input" style={{ flex: "2 1 160px" }} placeholder="Libellé" value={name} onChange={(e) => setName(e.target.value)} />
           <input className="auth-input" style={{ flex: "1 1 100px" }} type="number" step="0.01" placeholder="Montant" value={amount} onChange={(e) => setAmount(e.target.value)} />
           <input className="auth-input" style={{ flex: "1 1 120px" }} placeholder="Catégorie" value={category} onChange={(e) => setCategory(e.target.value)} />
-          <button className="main-btn" type="submit">Ajouter</button>
+          <button className="checklist-submit" type="submit">Ajouter</button>
         </form>
 
-        {entries.length === 0 ? (
-          <EmptyState icon="💰">Aucun mouvement enregistré.</EmptyState>
+        {monthOneOff.length === 0 ? (
+          <EmptyState icon="💰">Aucun mouvement ce mois-ci.</EmptyState>
         ) : (
-          <ul style={{ listStyle: "none", margin: 0, padding: 0 }}>
-            {entries.slice(0, 30).map((e) => (
-              <li key={e.id} style={{ display: "flex", alignItems: "center", gap: 10, padding: "10px 0", borderBottom: "1px solid var(--line)" }}>
-                <span style={{ flex: 1 }}>{e.name} <span className="card-sub">· {e.category}</span></span>
-                <span style={{ color: e.type === "income" ? "var(--success)" : "var(--danger-soft)" }}>
+          <ul className="checklist">
+            {oneOff.slice(0, 40).map((e) => (
+              <li key={e.id} className="task-item">
+                <div className="task-body">
+                  <span className="task-name">{e.name}</span>
+                  <div className="task-meta"><span className="cat-tag">{e.category}</span></div>
+                </div>
+                <strong className={e.type === "income" ? "money-positive" : "money-negative"}>
                   {e.type === "income" ? "+" : "−"}{money(Number(e.amount))}
-                </span>
-                <button className="secondary-btn" onClick={() => removeEntry(e.id)}>✕</button>
+                </strong>
+                <button type="button" className="task-del" onClick={() => removeEntry(e.id)} aria-label="Supprimer" title="Supprimer">✕</button>
               </li>
             ))}
           </ul>
         )}
       </div>
 
+      {/* ===== Dépenses récurrentes ===== */}
       <div className="card">
-        <div className="card-head"><h2 className="card-title">🎯 Objectifs d’épargne</h2></div>
-        <form onSubmit={addGoal} style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-          <input className="auth-input" style={{ flex: "2 1 160px" }} placeholder="Nom" value={goalName} onChange={(e) => setGoalName(e.target.value)} />
-          <input className="auth-input" style={{ flex: "1 1 120px" }} type="number" placeholder="Montant cible" value={goalTarget} onChange={(e) => setGoalTarget(e.target.value)} />
-          <button className="main-btn" type="submit">Ajouter</button>
-        </form>
-        {goals.length === 0 ? (
-          <EmptyState icon="🐖">Aucun objectif d’épargne.</EmptyState>
-        ) : (
-          <div style={{ display: "grid", gap: 16 }}>
-            {goals.map((g) => (
-              <div key={g.id}>
-                <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 4 }}>
-                  <strong>{g.name}</strong>
-                  <span className="card-sub">{money(Number(g.saved))} / {money(Number(g.target))}</span>
-                </div>
-                <ProgressBar value={Number(g.target) ? (Number(g.saved) / Number(g.target)) * 100 : 0} />
-                <div style={{ display: "flex", gap: 8, alignItems: "center", marginTop: 8 }}>
-                  <input className="auth-input" type="number" style={{ flex: 1 }} defaultValue={g.saved} onBlur={(e) => updateSaved(g, Number(e.target.value))} />
-                  <button className="secondary-btn" onClick={() => removeGoal(g.id)}>✕</button>
-                </div>
-              </div>
-            ))}
+        <div className="card-head">
+          <div>
+            <h2 className="card-title">🔁 Dépenses récurrentes</h2>
+            <p className="card-sub">Loyer, abonnements, assurances… comptés automatiquement chaque mois.</p>
           </div>
+          <span className="pill">{money(recurringSpent)} / mois</span>
+        </div>
+        <form onSubmit={addRecurring} className="checklist-add">
+          <input className="auth-input" style={{ flex: "2 1 160px" }} placeholder="Ex. Loyer, Netflix…" value={recName} onChange={(e) => setRecName(e.target.value)} />
+          <input className="auth-input" style={{ flex: "1 1 100px" }} type="number" step="0.01" placeholder="Montant" value={recAmount} onChange={(e) => setRecAmount(e.target.value)} />
+          <input className="auth-input" style={{ flex: "1 1 120px" }} placeholder="Catégorie" value={recCategory} onChange={(e) => setRecCategory(e.target.value)} />
+          <button className="checklist-submit" type="submit">Ajouter</button>
+        </form>
+
+        {recurring.length === 0 ? (
+          <EmptyState icon="🔁">Aucune dépense récurrente. Ajoute ton loyer ou tes abonnements.</EmptyState>
+        ) : (
+          <ul className="checklist">
+            {recurring.map((e) => (
+              <li key={e.id} className="task-item">
+                <div className="task-body">
+                  <span className="task-name">{e.name}</span>
+                  <div className="task-meta">
+                    <span className="cat-tag">{e.category}</span>
+                    <span className="task-mins">/ mois</span>
+                  </div>
+                </div>
+                <strong className="money-negative">−{money(Number(e.amount))}</strong>
+                <button type="button" className="task-del" onClick={() => removeEntry(e.id)} aria-label="Supprimer" title="Supprimer">✕</button>
+              </li>
+            ))}
+          </ul>
         )}
       </div>
     </>

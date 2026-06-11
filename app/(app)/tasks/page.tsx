@@ -13,6 +13,7 @@ export default async function TasksPage() {
         resource="tasks"
         initialItems={items}
         withMinutes
+        reorderable
         emptyIcon="⏱️"
         emptyText="Aucune tâche. Ajoute la première."
         addLabel="Ajouter"

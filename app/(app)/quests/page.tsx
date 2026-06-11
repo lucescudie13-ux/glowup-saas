@@ -13,6 +13,7 @@ export default async function QuestsPage() {
         resource="quests"
         initialItems={items}
         withCategory
+        reorderable
         emptyIcon="⚔️"
         emptyText="Aucune quête. Lance ton premier défi."
         addLabel="Ajouter la quête"

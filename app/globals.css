@@ -2041,3 +2041,326 @@ html[data-theme] .card,
 html[data-theme] .kpi {
   transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
 }
+
+/* =============================================================
+   CHECKLIST / TASK ITEMS  (quests · routine · tâches du jour)
+   A modern, compact row: a tidy check toggle, a roomy text body
+   with badges, and a discreet delete action. Works in both themes
+   (it leans on the palette variables).
+   ============================================================= */
+.checklist-add {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  align-items: stretch;
+  margin-bottom: 18px;
+}
+.checklist-add .auth-input { min-height: 48px; }
+
+/* Compact, non-full-width submit (the global .main-btn is width:100%) */
+.checklist-submit {
+  width: auto;
+  flex: 0 0 auto;
+  min-height: 48px;
+  padding: 0 22px;
+  border-radius: 13px;
+  background: linear-gradient(90deg, #00d5ff, #7ef9ff);
+  color: #02070d;
+  font-weight: 800;
+  letter-spacing: 0.2px;
+  box-shadow: 0 0 22px rgba(0, 245, 255, 0.22);
+}
+.checklist-submit:disabled { opacity: 0.6; cursor: default; transform: none; }
+
+.checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.task-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
+  background:
+    radial-gradient(circle at top right, rgba(0, 245, 255, 0.035), transparent 45%),
+    var(--surface-2);
+  border: 1px solid var(--line);
+  transition: border-color 0.16s ease, background 0.16s ease, transform 0.16s ease;
+}
+.task-item:hover {
+  border-color: var(--line-strong);
+  transform: translateY(-1px);
+}
+.task-item.is-done { opacity: 0.7; }
+
+/* Check toggle (a button, so the giant global input styles don't apply) */
+.task-check {
+  flex: 0 0 auto;
+  width: 26px;
+  height: 26px;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  border-radius: 9px;
+  border: 2px solid var(--line-strong);
+  background: transparent;
+  color: transparent;
+  display: grid;
+  place-items: center;
+  font-size: 15px;
+  font-weight: 900;
+  line-height: 1;
+  cursor: pointer;
+  transition: 0.16s ease;
+}
+.task-check:hover { transform: none; border-color: var(--cyan); }
+.task-check.checked {
+  background: linear-gradient(135deg, #00d5ff, #7ef9ff);
+  border-color: var(--cyan);
+  color: #02141b;
+  box-shadow: 0 0 14px rgba(0, 245, 255, 0.35);
+}
+
+.task-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.task-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text);
+  line-height: 1.35;
+  overflow-wrap: anywhere;
+}
+.task-item.is-done .task-name { text-decoration: line-through; color: var(--muted); }
+
+.task-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+}
+.task-mins {
+  font-size: 11.5px;
+  font-weight: 700;
+  color: var(--cyan-soft);
+  background: rgba(0, 245, 255, 0.10);
+  border: 1px solid var(--line);
+  padding: 2px 9px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* Discreet delete (the global .secondary-btn is width:100%) */
+.task-del {
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  min-height: 0;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 10px;
+  background: transparent;
+  border: 1px solid transparent;
+  color: var(--muted);
+  font-size: 15px;
+  opacity: 0.6;
+  transition: 0.16s ease;
+}
+.task-del:hover {
+  transform: none;
+  opacity: 1;
+  color: var(--danger-soft);
+  background: rgba(255, 90, 110, 0.12);
+  border-color: rgba(255, 90, 110, 0.28);
+}
+
+html[data-theme="light"] .task-item:hover { background: rgba(8, 145, 178, 0.06); }
+html[data-theme="light"] .task-mins {
+  background: rgba(8, 145, 178, 0.10);
+  border-color: rgba(8, 145, 178, 0.24);
+  color: #0b5e75;
+}
+html[data-theme="light"] .task-del:hover {
+  background: rgba(225, 29, 72, 0.10);
+  border-color: rgba(225, 29, 72, 0.26);
+}
+
+/* ===== Loading skeletons (instant navigation feedback) ===== */
+.skeleton {
+  position: relative;
+  overflow: hidden;
+  border-radius: 8px;
+  background: var(--surface-2);
+}
+.skeleton::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(0, 245, 255, 0.10), transparent);
+  animation: skeleton-shimmer 1.2s infinite;
+}
+html[data-theme="light"] .skeleton::after {
+  background: linear-gradient(90deg, transparent, rgba(8, 145, 178, 0.12), transparent);
+}
+.skeleton-line { height: 12px; margin-bottom: 8px; }
+.skeleton-title { height: 28px; width: 240px; margin-bottom: 10px; }
+.skeleton-sub { height: 14px; width: 360px; max-width: 80%; }
+@keyframes skeleton-shimmer {
+  100% { transform: translateX(100%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .skeleton::after { animation: none; }
+}
+
+/* ===== Day navigation (nutrition calendar) ===== */
+.day-nav {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.day-nav-center {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.day-nav-center .auth-input { max-width: 220px; }
+.day-nav-label {
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--cyan-soft);
+  text-transform: capitalize;
+}
+.day-arrow {
+  width: 48px;
+  flex: 0 0 auto;
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1;
+  padding: 0;
+}
+.link-btn {
+  background: transparent;
+  border: none;
+  color: var(--cyan-soft);
+  font-weight: 700;
+  padding: 4px 6px;
+  min-height: 0;
+}
+.link-btn:hover { transform: none; text-decoration: underline; }
+
+/* ===== Calories chart ===== */
+.cal-chart { width: 100%; }
+.cal-bars-wrap {
+  position: relative;
+  height: 170px;
+  padding: 4px 0;
+}
+.cal-bars {
+  display: flex;
+  align-items: flex-end;
+  gap: 6px;
+  height: 100%;
+}
+.cal-col {
+  flex: 1 1 0;
+  height: 100%;
+  display: flex;
+  align-items: flex-end;
+  min-width: 0;
+}
+.cal-bar {
+  width: 100%;
+  min-height: 3px;
+  border-radius: 6px 6px 0 0;
+  background: linear-gradient(180deg, #7ef9ff, #00d5ff);
+  box-shadow: 0 0 12px rgba(0, 245, 255, 0.25);
+  transition: height 0.3s ease;
+}
+.cal-bar.over { background: linear-gradient(180deg, #ffd166, #ff9f1c); box-shadow: 0 0 12px rgba(255, 159, 28, 0.3); }
+.cal-bar.is-today { outline: 2px solid var(--cyan); outline-offset: 1px; }
+.cal-goal-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  border-top: 2px dashed var(--line-strong);
+  pointer-events: none;
+  z-index: 1;
+}
+.cal-labels {
+  display: flex;
+  gap: 6px;
+  margin-top: 6px;
+}
+.cal-x {
+  flex: 1 1 0;
+  text-align: center;
+  font-size: 10px;
+  color: var(--muted);
+  min-width: 0;
+}
+html[data-theme="light"] .cal-bar { background: linear-gradient(180deg, #22b8cf, #0891b2); box-shadow: none; }
+html[data-theme="light"] .cal-bar.over { background: linear-gradient(180deg, #f59e0b, #d97706); box-shadow: none; }
+
+/* ===== Range sliders (objectives, projects) =====
+   The global input{} rule boxes range inputs; strip that and use accent-color. */
+input[type="range"] {
+  width: 100%;
+  min-height: 0;
+  height: auto;
+  padding: 0;
+  margin-top: 10px;
+  border: none;
+  border-radius: 0;
+  background: transparent;
+  accent-color: var(--cyan);
+  cursor: pointer;
+}
+input[type="range"]:focus {
+  box-shadow: none;
+  outline: none;
+}
+
+/* ===== Drag-to-reorder (checklist, dnd-kit) ===== */
+.task-item.is-dragging {
+  opacity: 0.9;
+  border-color: var(--line-strong);
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.28);
+}
+.task-grip {
+  flex: 0 0 auto;
+  width: 22px;
+  min-height: 0;
+  height: 28px;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  place-items: center;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--muted-2);
+  font-size: 16px;
+  line-height: 1;
+  letter-spacing: 1px;
+  cursor: grab;
+  user-select: none;
+  touch-action: none; /* let dnd-kit handle touch drags without page scroll */
+}
+.task-grip:hover { transform: none; color: var(--cyan-soft); background: rgba(0, 245, 255, 0.08); }
+.task-grip:active { cursor: grabbing; }
+html[data-theme="light"] .task-grip:hover { background: rgba(8, 145, 178, 0.10); }

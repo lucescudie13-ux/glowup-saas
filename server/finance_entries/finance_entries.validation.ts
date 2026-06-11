@@ -6,12 +6,14 @@ export const createFinanceEntrySchema = z.object({
   amount: z.coerce.number().positive("Indique un montant valide."),
   category: z.string().trim().min(1).default("Autre"),
   entry_date: z.string().date().optional(),
+  recurring: z.coerce.boolean().optional(),
 });
 export const updateFinanceEntrySchema = z.object({
   name: z.string().trim().min(1).optional(),
   amount: z.coerce.number().positive().optional(),
   category: z.string().trim().min(1).optional(),
   entry_date: z.string().date().optional(),
+  recurring: z.coerce.boolean().optional(),
 });
 export type CreateFinanceEntryInput = z.infer<typeof createFinanceEntrySchema>;
 export type UpdateFinanceEntryInput = z.infer<typeof updateFinanceEntrySchema>;

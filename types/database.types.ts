@@ -68,19 +68,19 @@ export interface Database {
         Partial<{ name: string; deltas: Json; action_date: string }>
       >;
       quests: Tbl<
-        { id: string; user_id: string; name: string; category: string; done: boolean } & Timestamps,
-        { user_id: string; name: string; category?: string; done?: boolean },
-        Partial<{ name: string; category: string; done: boolean }>
+        { id: string; user_id: string; name: string; category: string; done: boolean; position: number } & Timestamps,
+        { user_id: string; name: string; category?: string; done?: boolean; position?: number },
+        Partial<{ name: string; category: string; done: boolean; position: number }>
       >;
       routines: Tbl<
-        { id: string; user_id: string; name: string; minutes: number; category: string; done: boolean } & Timestamps,
-        { user_id: string; name: string; minutes?: number; category?: string; done?: boolean },
-        Partial<{ name: string; minutes: number; category: string; done: boolean }>
+        { id: string; user_id: string; name: string; minutes: number; category: string; done: boolean; position: number } & Timestamps,
+        { user_id: string; name: string; minutes?: number; category?: string; done?: boolean; position?: number },
+        Partial<{ name: string; minutes: number; category: string; done: boolean; position: number }>
       >;
       tasks: Tbl<
-        { id: string; user_id: string; name: string; minutes: number; category: string; done: boolean } & Timestamps,
-        { user_id: string; name: string; minutes?: number; category?: string; done?: boolean },
-        Partial<{ name: string; minutes: number; category: string; done: boolean }>
+        { id: string; user_id: string; name: string; minutes: number; category: string; done: boolean; position: number } & Timestamps,
+        { user_id: string; name: string; minutes?: number; category?: string; done?: boolean; position?: number },
+        Partial<{ name: string; minutes: number; category: string; done: boolean; position: number }>
       >;
       objectives: Tbl<
         { id: string; user_id: string; period: "monthly" | "yearly"; name: string; actions: string; progress: number; details: Json } & Timestamps,
@@ -93,9 +93,9 @@ export interface Database {
         Partial<{ name: string; progress: number }>
       >;
       finance_entries: Tbl<
-        { id: string; user_id: string; type: "income" | "expense"; name: string; amount: number; category: string; entry_date: string } & Timestamps,
-        { user_id: string; type: "income" | "expense"; name: string; amount: number; category?: string; entry_date?: string },
-        Partial<{ type: "income" | "expense"; name: string; amount: number; category: string; entry_date: string }>
+        { id: string; user_id: string; type: "income" | "expense"; name: string; amount: number; category: string; entry_date: string; recurring: boolean } & Timestamps,
+        { user_id: string; type: "income" | "expense"; name: string; amount: number; category?: string; entry_date?: string; recurring?: boolean },
+        Partial<{ type: "income" | "expense"; name: string; amount: number; category: string; entry_date: string; recurring: boolean }>
       >;
       financial_goals: Tbl<
         { id: string; user_id: string; name: string; target: number; saved: number } & Timestamps,

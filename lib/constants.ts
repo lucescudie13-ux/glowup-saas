@@ -8,11 +8,11 @@ export const NAV_ITEMS = [
   { section: "tasks", icon: "⏱️", label: "Tâches du jour" },
   { section: "objectives", icon: "🎯", label: "Objectifs" },
   { section: "projects", icon: "🚀", label: "Projets en cours" },
-  { section: "finance", icon: "💰", label: "Finance" },
+  { section: "finance", icon: "💰", label: "Budget" },
+  { section: "financial-goals", icon: "🎯", label: "Objectifs financiers" },
   { section: "nutrition", icon: "🍽️", label: "Alimentation" },
   { section: "dangers", icon: "🧨", label: "Dangers" },
   { section: "memento", icon: "📝", label: "Memento" },
-  { section: "stats", icon: "📊", label: "Statistiques" },
   { section: "history", icon: "📜", label: "Historique" },
   { section: "training", icon: "🏋️", label: "Entraînement" },
 ] as const;

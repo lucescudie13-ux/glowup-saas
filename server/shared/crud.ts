@@ -40,7 +40,10 @@ export function createCrudRepository<T extends OwnedTable>(
       const db = relaxed(await createClient());
       let query = db.from(table).select("*").eq("user_id", userId);
       for (const [k, v] of Object.entries(filters)) query = query.eq(k, v);
-      const { data, error } = await query.order(orderBy, { ascending });
+      query = query.order(orderBy, { ascending });
+      // Stable tiebreaker so equal sort keys keep a deterministic order.
+      if (orderBy !== "created_at") query = query.order("created_at", { ascending: true });
+      const { data, error } = await query;
       if (error) throw error;
       return (data ?? []) as Row[];
     },

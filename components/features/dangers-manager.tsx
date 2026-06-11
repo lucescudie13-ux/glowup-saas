@@ -35,9 +35,14 @@ export function DangersManager({ initialItems }: { initialItems: Danger[] }) {
   }
 
   async function remove(id: string) {
-    await api.del(`/api/dangers/${id}`);
-    setItems((prev) => prev.filter((i) => i.id !== id));
-    router.refresh();
+    const snapshot = items;
+    setItems((prev) => prev.filter((i) => i.id !== id)); // optimistic
+    try {
+      await api.del(`/api/dangers/${id}`);
+      router.refresh();
+    } catch {
+      setItems(snapshot);
+    }
   }
 
   return (
