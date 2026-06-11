@@ -1789,3 +1789,255 @@
   border: 1px dashed var(--line-strong); color: var(--muted); background: rgba(0,245,255,0.04);
   font-size: 14px;
 }
+
+/* =============================================================
+   LIGHT MODE
+   Activated via <html data-theme="light">. Dark mode is the
+   default and is untouched. We re-map the palette variables and
+   override the hardcoded dark surfaces that don't derive from them.
+   ============================================================= */
+html[data-theme="light"] {
+  --bg-0: #d9e0e8;
+  --bg-1: #dfe6ed;
+  --bg-2: #eef2f6;
+  --bg-3: #e4eaf0;
+  --line: rgba(8, 145, 178, 0.20);
+  --line-strong: rgba(8, 145, 178, 0.42);
+  --cyan: #0891b2;
+  --cyan-soft: #0e7490;
+  --cyan-deep: #0369a1;
+  --text: #11212b;
+  --muted: #44606b;
+  --muted-2: #566e79;
+  --danger: #e11d48;
+  --danger-soft: #be123c;
+  --success: #047857;
+  --warn: #b45309;
+  --shadow: 0 18px 40px rgba(15, 31, 41, 0.12);
+  --text-strong: #122029;
+  --surface: rgba(232, 238, 244, 0.95);
+  --surface-2: #e6ecf2;
+  --focus: rgba(8, 145, 178, 0.42);
+}
+
+html[data-theme="light"] body {
+  background:
+    radial-gradient(circle at top left, rgba(8, 145, 178, 0.07), transparent 35%),
+    radial-gradient(circle at bottom right, rgba(3, 105, 161, 0.07), transparent 35%),
+    linear-gradient(135deg, #d7dee6 0%, #dde4eb 45%, #d2dae2 100%);
+  color: var(--text);
+}
+
+/* Sidebar */
+html[data-theme="light"] .sidebar {
+  background: linear-gradient(180deg, rgba(228, 234, 240, 0.97), rgba(218, 226, 234, 0.98));
+  border-right-color: rgba(8, 145, 178, 0.20);
+}
+html[data-theme="light"] .brand {
+  background: linear-gradient(180deg, rgba(228, 234, 240, 0.98), rgba(228, 234, 240, 0.90));
+  border-bottom-color: rgba(15, 31, 41, 0.07);
+}
+html[data-theme="light"] .nav-item { color: #2a4651; }
+html[data-theme="light"] .nav-item:hover { background: rgba(8, 145, 178, 0.08); }
+html[data-theme="light"] .nav-item.active { color: var(--text-strong); }
+html[data-theme="light"] .sidebar-foot,
+html[data-theme="light"] .setting-row { border-color: rgba(15, 31, 41, 0.07); }
+
+/* Topbar */
+html[data-theme="light"] .topbar {
+  background: linear-gradient(180deg, rgba(224, 231, 238, 0.92), rgba(224, 231, 238, 0.70));
+  border-bottom-color: rgba(8, 145, 178, 0.14);
+}
+html[data-theme="light"] .search input,
+html[data-theme="light"] input,
+html[data-theme="light"] select,
+html[data-theme="light"] textarea {
+  background: #f3f6f9;
+  border-color: rgba(8, 145, 178, 0.25);
+}
+html[data-theme="light"] input::placeholder,
+html[data-theme="light"] textarea::placeholder { color: #94a8b0; }
+
+/* Logos / avatars (were near-black gradients) */
+html[data-theme="light"] .brand-logo,
+html[data-theme="light"] .user-chip .av,
+html[data-theme="light"] .hero-avatar {
+  background:
+    radial-gradient(circle, rgba(8, 145, 178, 0.18), transparent 65%),
+    linear-gradient(135deg, #e4f4f8, #cfeaf1);
+}
+html[data-theme="light"] .user-chip { background: rgba(255, 255, 255, 0.8); }
+
+/* Page header glow off */
+html[data-theme="light"] .page-title { text-shadow: none; }
+
+/* Cards */
+html[data-theme="light"] .card {
+  background:
+    radial-gradient(circle at top right, rgba(8, 145, 178, 0.06), transparent 42%),
+    linear-gradient(180deg, #eef2f6, #e6ecf2);
+  box-shadow: 0 1px 2px rgba(15, 31, 41, 0.05), var(--shadow);
+}
+html[data-theme="light"] .kpi {
+  background: linear-gradient(180deg, #eef2f6, #e4eaf0);
+}
+html[data-theme="light"] .hero {
+  background:
+    radial-gradient(circle at top right, rgba(8, 145, 178, 0.10), transparent 50%),
+    linear-gradient(180deg, #eef2f6, #e4eaf0);
+}
+
+/* Surface-2 group: fix the bright-cyan borders that vanish on white */
+html[data-theme="light"] .row,
+html[data-theme="light"] .objective,
+html[data-theme="light"] .stat,
+html[data-theme="light"] .finance-mini,
+html[data-theme="light"] .macro-mini,
+html[data-theme="light"] .meal-card,
+html[data-theme="light"] .sport-metric,
+html[data-theme="light"] .history-item,
+html[data-theme="light"] .objective-detail-box {
+  border-color: rgba(8, 145, 178, 0.16);
+}
+html[data-theme="light"] .row:hover { background: rgba(8, 145, 178, 0.09); }
+html[data-theme="light"] .food-row { background: #e8eef3; border-color: rgba(8, 145, 178, 0.14); }
+html[data-theme="light"] .meal-total { background: rgba(8, 145, 178, 0.05); border-color: rgba(8, 145, 178, 0.12); }
+html[data-theme="light"] .tab { background: #dde5ec; }
+
+/* Progress bar tracks (were translucent white) */
+html[data-theme="light"] .bar,
+html[data-theme="light"] .big-bar {
+  background: rgba(8, 145, 178, 0.10);
+  border-color: rgba(8, 145, 178, 0.14);
+}
+
+/* Strong-white text that needs to go dark */
+html[data-theme="light"] .objective-name { color: var(--text-strong); }
+html[data-theme="light"] .objective-actions { color: #11212b; }
+
+/* Contrast fixes: labels that were hardcoded light-gray for the dark theme */
+html[data-theme="light"] .nav-section-label { color: var(--muted-2); }
+html[data-theme="light"] .kpi-label,
+html[data-theme="light"] label.field-label { color: var(--muted); }
+html[data-theme="light"] .nav-item { color: #243f49; }
+html[data-theme="light"] .brand-sub { color: var(--muted); }
+/* Cyan accent text reads better a touch deeper on a light surface */
+html[data-theme="light"] .kpi-trend,
+html[data-theme="light"] .hero-meta strong,
+html[data-theme="light"] .user-chip .lvl,
+html[data-theme="light"] .objective-percent,
+html[data-theme="light"] .objective-hint { color: #0b5e75; }
+html[data-theme="light"] .pill,
+html[data-theme="light"] .tag,
+html[data-theme="light"] .cat-tag { color: #0a5468; }
+
+/* Modals / toast */
+html[data-theme="light"] .modal,
+html[data-theme="light"] .toast {
+  background: linear-gradient(180deg, #edf1f5, #e3e9ef);
+  color: var(--text);
+}
+html[data-theme="light"] .modal-backdrop { background: rgba(15, 31, 41, 0.35); }
+
+/* Toggle switch */
+html[data-theme="light"] .switch { background: rgba(8, 145, 178, 0.15); }
+html[data-theme="light"] .switch::after { background: #ffffff; }
+
+/* Accent cards: lighten while keeping their hue */
+html[data-theme="light"] .nutrition-card {
+  background:
+    radial-gradient(circle at top right, rgba(8, 145, 178, 0.10), transparent 55%),
+    linear-gradient(180deg, #f3fdff, #e8f9fc);
+  border-color: rgba(8, 145, 178, 0.30);
+}
+html[data-theme="light"] .training-card {
+  background: linear-gradient(180deg, #f1fdf7, #e6faf0);
+}
+html[data-theme="light"] .danger-card {
+  background:
+    radial-gradient(circle at top right, rgba(225, 29, 72, 0.12), transparent 55%),
+    linear-gradient(180deg, #fff5f6, #ffeaee);
+  border-color: rgba(225, 29, 72, 0.30);
+  box-shadow: var(--shadow);
+}
+html[data-theme="light"] .danger-item {
+  background: #fff4f6;
+  border-color: rgba(225, 29, 72, 0.22);
+}
+html[data-theme="light"] .danger-title { color: #9f1239; }
+html[data-theme="light"] .danger-muted { color: #be123c; }
+html[data-theme="light"] .memento-card {
+  background:
+    radial-gradient(circle at top right, rgba(180, 83, 9, 0.12), transparent 48%),
+    linear-gradient(180deg, #fffbf0, #fff6e0);
+  border-color: rgba(180, 83, 9, 0.28);
+  box-shadow: var(--shadow);
+}
+html[data-theme="light"] .memento-item {
+  background: #fffaf0;
+  border-color: rgba(180, 83, 9, 0.22);
+}
+html[data-theme="light"] .memento-quote { color: #7c5410; text-shadow: none; }
+html[data-theme="light"] .memento-quote::before,
+html[data-theme="light"] .memento-quote::after { color: #b45309; }
+
+/* Accent chips: give them a defined surface instead of a barely-visible tint */
+html[data-theme="light"] .pill {
+  background: rgba(8, 145, 178, 0.10);
+  border-color: rgba(8, 145, 178, 0.28);
+}
+html[data-theme="light"] .pill.warn {
+  background: rgba(180, 83, 9, 0.10);
+  border-color: rgba(180, 83, 9, 0.30);
+  color: #92500a;
+}
+html[data-theme="light"] .pill.danger {
+  background: rgba(225, 29, 72, 0.10);
+  border-color: rgba(225, 29, 72, 0.30);
+  color: #9f1239;
+}
+html[data-theme="light"] .tag,
+html[data-theme="light"] .cat-tag {
+  background: rgba(8, 145, 178, 0.10);
+  border-color: rgba(8, 145, 178, 0.26);
+}
+html[data-theme="light"] .tag.neg {
+  background: rgba(225, 29, 72, 0.10);
+  border-color: rgba(225, 29, 72, 0.28);
+  color: #9f1239;
+}
+html[data-theme="light"] .nav-badge {
+  background: rgba(8, 145, 178, 0.12);
+  color: #0a5468;
+}
+html[data-theme="light"] .small-btn,
+html[data-theme="light"] .secondary-btn,
+html[data-theme="light"] .presets button {
+  color: #0a5468;
+  background: rgba(8, 145, 178, 0.12);
+  border-color: rgba(8, 145, 178, 0.26);
+}
+html[data-theme="light"] .small-btn:hover,
+html[data-theme="light"] .secondary-btn:hover { background: rgba(8, 145, 178, 0.20); }
+html[data-theme="light"] .danger-btn,
+html[data-theme="light"] .delete-btn { color: #9f1239; }
+
+/* Macro numbers: the pastel hues from dark mode are too light on grey */
+html[data-theme="light"] .macro-carbs { color: #c2185b; }
+html[data-theme="light"] .macro-protein { color: #2a52be; }
+html[data-theme="light"] .macro-fat { color: #b07a0a; }
+html[data-theme="light"] .macro-calories { color: #0b5e75; }
+html[data-theme="light"] .money-neutral { color: #0b5e75; }
+
+/* Scrollbar */
+html[data-theme="light"] ::-webkit-scrollbar-thumb { background: rgba(8, 145, 178, 0.25); }
+html[data-theme="light"] ::-webkit-scrollbar-thumb:hover { background: rgba(8, 145, 178, 0.40); }
+
+/* Smooth the transition when toggling */
+html[data-theme] body,
+html[data-theme] .sidebar,
+html[data-theme] .topbar,
+html[data-theme] .card,
+html[data-theme] .kpi {
+  transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}

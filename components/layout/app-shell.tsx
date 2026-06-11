@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Sidebar } from "./sidebar";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 import type { Profile } from "@/types";
 
 interface ShellProps {
@@ -27,6 +28,7 @@ export function AppShell({ profile, level, score, children }: ShellProps) {
             <input placeholder="Rechercher…" aria-label="Rechercher" />
           </div>
           <div className="top-actions">
+            <ThemeToggle />
             <div className="pill warn" title="Série de jours actifs">
               🔥 {profile.streak_count} j
             </div>

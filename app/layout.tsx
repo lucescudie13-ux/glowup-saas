@@ -7,9 +7,15 @@ export const metadata: Metadata = {
     "Fais progresser ton personnage de vie réelle : statistiques, quêtes, routines, objectifs, finance, nutrition et entraînement.",
 };
 
+// Applies the saved theme before first paint to avoid a flash. Defaults to dark.
+const themeInit = `(function(){try{var t=localStorage.getItem('theme')||'dark';document.documentElement.setAttribute('data-theme',t);}catch(e){document.documentElement.setAttribute('data-theme','dark');}})();`;
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr">
+    <html lang="fr" suppressHydrationWarning>
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
+      </head>
       <body>{children}</body>
     </html>
   );
