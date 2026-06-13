@@ -27,8 +27,9 @@ export function FinanceManager({ initialEntries }: Props) {
   const [recCategory, setRecCategory] = useState("");
 
   const month = todayISO().slice(0, 7);
-  const oneOff = entries.filter((e) => !e.recurring);
-  const recurring = entries.filter((e) => e.recurring);
+  // Actuals only — the planned/forecast layer is handled separately.
+  const oneOff = entries.filter((e) => !e.recurring && !e.planned);
+  const recurring = entries.filter((e) => e.recurring && !e.planned);
 
   const monthOneOff = oneOff.filter((e) => e.entry_date.slice(0, 7) === month);
   const income = monthOneOff.filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);

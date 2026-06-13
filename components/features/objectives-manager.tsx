@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
-import { ProgressBar } from "@/components/ui/progress-bar";
 import { EmptyState } from "@/components/ui/empty-state";
 import type { Objective, ObjectivePeriod } from "@/types";
 
@@ -14,6 +13,11 @@ export function ObjectivesManager({ initialItems }: { initialItems: Objective[] 
   const [name, setName] = useState("");
   const [actions, setActions] = useState("");
   const [busy, setBusy] = useState(false);
+
+  // Inline edit state
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editActions, setEditActions] = useState("");
 
   const visible = items.filter((o) => o.period === period);
 
@@ -32,12 +36,30 @@ export function ObjectivesManager({ initialItems }: { initialItems: Objective[] 
     }
   }
 
+  function startEdit(o: Objective) {
+    setEditingId(o.id);
+    setEditName(o.name);
+    setEditActions(o.actions ?? "");
+  }
+  function cancelEdit() {
+    setEditingId(null);
+  }
+  async function saveEdit(o: Objective) {
+    const patch = { name: editName.trim() || o.name, actions: editActions };
+    setItems((prev) => prev.map((i) => (i.id === o.id ? { ...i, ...patch } : i))); // optimistic
+    setEditingId(null);
+    try {
+      await api.patch(`/api/objectives/${o.id}`, patch);
+      router.refresh();
+    } catch {
+      router.refresh();
+    }
+  }
+
   // Update the bar instantly while dragging (no network).
   function changeProgress(o: Objective, progress: number) {
     setItems((prev) => prev.map((i) => (i.id === o.id ? { ...i, progress } : i)));
   }
-
-  // Persist once, when the slider is released.
   async function commitProgress(o: Objective, progress: number) {
     try {
       await api.patch(`/api/objectives/${o.id}`, { progress });
@@ -60,19 +82,26 @@ export function ObjectivesManager({ initialItems }: { initialItems: Objective[] 
 
   return (
     <div className="card">
-      <div style={{ display: "flex", gap: 8, marginBottom: 14 }}>
-        <button className={period === "monthly" ? "main-btn" : "secondary-btn"} onClick={() => setPeriod("monthly")}>
+      <div className="section-tabs">
+        <button type="button" className={`tab${period === "monthly" ? " active" : ""}`} onClick={() => setPeriod("monthly")}>
           📅 Du mois
         </button>
-        <button className={period === "yearly" ? "main-btn" : "secondary-btn"} onClick={() => setPeriod("yearly")}>
+        <button type="button" className={`tab${period === "yearly" ? " active" : ""}`} onClick={() => setPeriod("yearly")}>
           🗓️ De l’année
         </button>
       </div>
 
-      <form onSubmit={add} style={{ display: "grid", gap: 8, marginBottom: 16 }}>
+      <form onSubmit={add} style={{ display: "grid", gap: 10, marginBottom: 18 }}>
         <input className="auth-input" placeholder="Objectif" value={name} onChange={(e) => setName(e.target.value)} />
-        <input className="auth-input" placeholder="Actions clés (optionnel)" value={actions} onChange={(e) => setActions(e.target.value)} />
-        <button className="main-btn" type="submit" disabled={busy} style={{ justifySelf: "start" }}>
+        <textarea
+          className="auth-input"
+          placeholder="Actions clés (optionnel) — Entrée pour aller à la ligne"
+          value={actions}
+          onChange={(e) => setActions(e.target.value)}
+          rows={3}
+          style={{ resize: "vertical" }}
+        />
+        <button className="checklist-submit" type="submit" disabled={busy} style={{ justifySelf: "start" }}>
           Ajouter l’objectif
         </button>
       </form>
@@ -80,29 +109,53 @@ export function ObjectivesManager({ initialItems }: { initialItems: Objective[] 
       {visible.length === 0 ? (
         <EmptyState icon="🎯">Aucun objectif {period === "monthly" ? "du mois" : "de l’année"}.</EmptyState>
       ) : (
-        <div style={{ display: "grid", gap: 16 }}>
+        <div style={{ display: "grid", gap: 14 }}>
           {visible.map((o) => (
-            <div key={o.id}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
-                <strong>{o.name}</strong>
-                <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
-                  <span className="card-sub">{o.progress}%</span>
-                  <button className="secondary-btn" onClick={() => remove(o.id)}>✕</button>
+            <div className="objective" key={o.id}>
+              {editingId === o.id ? (
+                <div style={{ display: "grid", gap: 10 }}>
+                  <input className="auth-input" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Objectif" />
+                  <textarea
+                    className="auth-input"
+                    value={editActions}
+                    onChange={(e) => setEditActions(e.target.value)}
+                    placeholder="Actions clés — Entrée pour aller à la ligne"
+                    rows={4}
+                    style={{ resize: "vertical" }}
+                  />
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button type="button" className="checklist-submit" onClick={() => saveEdit(o)} style={{ minWidth: 120 }}>
+                      Enregistrer
+                    </button>
+                    <button type="button" className="ghost-btn" onClick={cancelEdit}>Annuler</button>
+                  </div>
                 </div>
-              </div>
-              {o.actions && <p className="card-sub" style={{ margin: "0 0 6px" }}>{o.actions}</p>}
-              <ProgressBar value={o.progress} />
-              <input
-                type="range"
-                min={0}
-                max={100}
-                value={o.progress}
-                onChange={(e) => changeProgress(o, Number(e.target.value))}
-                onMouseUp={(e) => commitProgress(o, Number((e.target as HTMLInputElement).value))}
-                onTouchEnd={(e) => commitProgress(o, Number((e.target as HTMLInputElement).value))}
-                onKeyUp={(e) => commitProgress(o, Number((e.target as HTMLInputElement).value))}
-                style={{ width: "100%", marginTop: 8 }}
-              />
+              ) : (
+                <>
+                  <div className="objective-head">
+                    <span className="objective-name">{o.name}</span>
+                    <div className="objective-controls" style={{ alignItems: "center" }}>
+                      <button type="button" className="task-del" onClick={() => startEdit(o)} aria-label="Modifier" title="Modifier">✏️</button>
+                      <button type="button" className="task-del" onClick={() => remove(o.id)} aria-label="Supprimer" title="Supprimer">✕</button>
+                    </div>
+                  </div>
+                  {o.actions ? <div className="objective-actions">{o.actions}</div> : null}
+                  <div className="objective-progress-line">
+                    <div className="big-bar"><div className="big-bar-fill" style={{ width: `${o.progress}%` }} /></div>
+                    <span className="objective-percent">{o.progress}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={0}
+                    max={100}
+                    value={o.progress}
+                    onChange={(e) => changeProgress(o, Number(e.target.value))}
+                    onMouseUp={(e) => commitProgress(o, Number((e.target as HTMLInputElement).value))}
+                    onTouchEnd={(e) => commitProgress(o, Number((e.target as HTMLInputElement).value))}
+                    onKeyUp={(e) => commitProgress(o, Number((e.target as HTMLInputElement).value))}
+                  />
+                </>
+              )}
             </div>
           ))}
         </div>

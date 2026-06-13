@@ -3,9 +3,7 @@ import { getCurrentUser, createClient } from "@/lib/supabase/server";
 import { PageHead } from "@/components/ui/page-head";
 import { clamp, money, percentage, todayISO } from "@/lib/utils";
 import { DashboardCheckList } from "@/components/features/dashboard-check-list";
-import type { Danger, FinanceEntry, FinancialGoal, Food, Memento, Objective, Project, Quest, Routine, Task } from "@/types";
-
-const MEAL_ORDER = ["Petit déjeuner", "Déjeuner", "Dîner", "Collation"];
+import type { Danger, FinanceEntry, FinancialGoal, Memento, Objective, Project, Quest, Routine, Task } from "@/types";
 
 // Small styled link that mirrors the prototype's "Gérer →" button.
 function ManageLink({ href, children = "Gérer →" }: { href: string; children?: React.ReactNode }) {
@@ -29,18 +27,6 @@ function Empty({ icon, text, href }: { icon: string; text: string; href: string 
   );
 }
 
-function nutritionTotals(foods: Food[]) {
-  return foods.reduce(
-    (t, f) => ({
-      calories: t.calories + Number(f.calories || 0),
-      protein: t.protein + Number(f.protein || 0),
-      carbs: t.carbs + Number(f.carbs || 0),
-      fat: t.fat + Number(f.fat || 0),
-    }),
-    { calories: 0, protein: 0, carbs: 0, fat: 0 },
-  );
-}
-
 export default async function DashboardPage() {
   const user = await getCurrentUser();
   const supabase = await createClient();
@@ -48,7 +34,7 @@ export default async function DashboardPage() {
   const thisMonth = todayISO().slice(0, 7);
 
   // Parallel reads — all owner-scoped + protected by RLS.
-  const [mementos, routines, tasks, monthly, yearly, quests, projects, finance, finGoals, foods, nutriGoals, dangers] =
+  const [mementos, routines, tasks, monthly, yearly, quests, projects, finance, finGoals, dangers] =
     await Promise.all([
       supabase.from("mementos").select("*").eq("user_id", uid),
       supabase.from("routines").select("*").eq("user_id", uid),
@@ -59,8 +45,6 @@ export default async function DashboardPage() {
       supabase.from("projects").select("*").eq("user_id", uid),
       supabase.from("finance_entries").select("*").eq("user_id", uid),
       supabase.from("financial_goals").select("*").eq("user_id", uid),
-      supabase.from("foods").select("*").eq("user_id", uid).eq("food_date", todayISO()),
-      supabase.from("nutrition_goals").select("*").eq("user_id", uid).maybeSingle(),
       supabase.from("dangers").select("*").eq("user_id", uid),
     ]);
 
@@ -73,9 +57,7 @@ export default async function DashboardPage() {
   const projectRows = (projects.data ?? []) as Project[];
   const financeRows = (finance.data ?? []) as FinanceEntry[];
   const finGoalRows = (finGoals.data ?? []) as FinancialGoal[];
-  const foodRows = (foods.data ?? []) as Food[];
   const dangerRows = (dangers.data ?? []) as Danger[];
-  const goals = nutriGoals.data ?? { calories: 0, protein: 0, carbs: 0, fat: 0 };
 
   // ----- Routine + tasks (daily) -----
   const routineTotalMin = routineRows.reduce((s, r) => s + (r.minutes || 1), 0);
@@ -101,14 +83,10 @@ export default async function DashboardPage() {
   const spent = monthExpenses.reduce((s, e) => s + Number(e.amount), 0) + recurringSpent;
   const net = income - spent;
 
-  // ----- Nutrition (today) -----
-  const totals = nutritionTotals(foodRows);
-  const macros = [
-    { label: "Glucides", unit: "g", value: totals.carbs, goal: Number(goals.carbs || 0), cls: "macro-carbs", fill: "macro-fill-carbs" },
-    { label: "Protéines", unit: "g", value: totals.protein, goal: Number(goals.protein || 0), cls: "macro-protein", fill: "macro-fill-protein" },
-    { label: "Lipides", unit: "g", value: totals.fat, goal: Number(goals.fat || 0), cls: "macro-fat", fill: "macro-fill-fat" },
-    { label: "Calories", unit: "kcal", value: totals.calories, goal: Number(goals.calories || 0), cls: "macro-calories", fill: "macro-fill-calories" },
-  ];
+  // ----- Financial goals (remaining to save) -----
+  const finGoalsTarget = finGoalRows.reduce((s, g) => s + Number(g.target), 0);
+  const finGoalsSaved = finGoalRows.reduce((s, g) => s + Number(g.saved), 0);
+  const finGoalsRemaining = Math.max(0, finGoalsTarget - finGoalsSaved);
 
   return (
     <div className="page section active">
@@ -143,6 +121,14 @@ export default async function DashboardPage() {
           </div>
           <ManageLink href="/financial-goals" />
         </div>
+        {finGoalRows.length ? (
+          <>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+              <span className="money-neutral" style={{ fontSize: 28, fontWeight: 800 }}>{money(finGoalsRemaining)}</span>
+              <span className="card-sub" style={{ fontSize: 14 }}>restants à épargner · {money(finGoalsSaved)} / {money(finGoalsTarget)}</span>
+            </div>
+          </>
+        ) : null}
         {finGoalRows.length ? (
           <div className="grid grid-2">
             {finGoalRows.map((g) => {
@@ -274,50 +260,6 @@ export default async function DashboardPage() {
         )}
       </div>
 
-      {/* ===== Alimentation du jour ===== */}
-      <div className="card nutrition-card" style={{ marginBottom: 16 }}>
-        <div className="card-head">
-          <div>
-            <h3 className="card-title">🍽️ Alimentation du jour</h3>
-            <p className="card-sub">Calories et macros consommées aujourd’hui.</p>
-          </div>
-          <ManageLink href="/nutrition" />
-        </div>
-        <div className="nutrition-summary">
-          {macros.map((m) => {
-            const pct = clamp(m.goal ? Math.round((m.value / m.goal) * 100) : 0);
-            const value = m.unit === "kcal" ? Math.round(m.value) : Math.round(m.value * 10) / 10;
-            return (
-              <div className="macro-mini" key={m.label}>
-                <div className="macro-label"><span>{m.label}</span><span>{pct}%</span></div>
-                <div className={`macro-value ${m.cls}`}>{value} / {m.goal || 0} {m.unit}</div>
-                <div className="bar"><div className={`bar-fill ${m.fill}`} style={{ width: `${pct}%` }} /></div>
-              </div>
-            );
-          })}
-        </div>
-        <div style={{ marginTop: 12 }}>
-          {foodRows.length ? (
-            MEAL_ORDER.map((meal) => {
-              const mealFoods = foodRows.filter((f) => f.meal === meal);
-              if (!mealFoods.length) return null;
-              const mt = nutritionTotals(mealFoods);
-              return (
-                <div className="row" key={meal}>
-                  <div className="row-left" style={{ display: "block" }}>
-                    <strong>{meal}</strong>
-                    <div className="expense-meta">
-                      {mealFoods.length} aliment(s) · {Math.round(mt.calories)} kcal · P {Math.round(mt.protein)}g · G {Math.round(mt.carbs)}g · L {Math.round(mt.fat)}g
-                    </div>
-                  </div>
-                </div>
-              );
-            })
-          ) : (
-            <Empty icon="🍽️" text="Aucun aliment ajouté aujourd’hui." href="/nutrition" />
-          )}
-        </div>
-      </div>
 
       {/* ===== Budget du mois ===== */}
       <div className="card" style={{ marginBottom: 16 }}>

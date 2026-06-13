@@ -1,9 +1,11 @@
 import { z } from "zod";
+export const routineFrequencySchema = z.enum(["daily", "weekly", "monthly"]);
 export const createRoutineSchema = z.object({
   name: z.string().trim().min(1, "Le nom est requis."),
   minutes: z.coerce.number().int().min(1, "Indique une durée en minutes."),
   category: z.string().trim().min(1).default("Général"),
   position: z.coerce.number().int().min(0).optional(),
+  frequency: routineFrequencySchema.optional(),
 });
 export const updateRoutineSchema = z.object({
   name: z.string().trim().min(1).optional(),
@@ -11,6 +13,7 @@ export const updateRoutineSchema = z.object({
   category: z.string().trim().min(1).optional(),
   done: z.boolean().optional(),
   position: z.coerce.number().int().min(0).optional(),
+  frequency: routineFrequencySchema.optional(),
 });
 export type CreateRoutineInput = z.infer<typeof createRoutineSchema>;
 export type UpdateRoutineInput = z.infer<typeof updateRoutineSchema>;

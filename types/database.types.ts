@@ -73,9 +73,9 @@ export interface Database {
         Partial<{ name: string; category: string; done: boolean; position: number }>
       >;
       routines: Tbl<
-        { id: string; user_id: string; name: string; minutes: number; category: string; done: boolean; position: number } & Timestamps,
-        { user_id: string; name: string; minutes?: number; category?: string; done?: boolean; position?: number },
-        Partial<{ name: string; minutes: number; category: string; done: boolean; position: number }>
+        { id: string; user_id: string; name: string; minutes: number; category: string; done: boolean; position: number; frequency: "daily" | "weekly" | "monthly" } & Timestamps,
+        { user_id: string; name: string; minutes?: number; category?: string; done?: boolean; position?: number; frequency?: "daily" | "weekly" | "monthly" },
+        Partial<{ name: string; minutes: number; category: string; done: boolean; position: number; frequency: "daily" | "weekly" | "monthly" }>
       >;
       tasks: Tbl<
         { id: string; user_id: string; name: string; minutes: number; category: string; done: boolean; position: number } & Timestamps,
@@ -88,19 +88,19 @@ export interface Database {
         Partial<{ name: string; actions: string; progress: number; details: Json; period: "monthly" | "yearly" }>
       >;
       projects: Tbl<
-        { id: string; user_id: string; name: string; progress: number } & Timestamps,
-        { user_id: string; name: string; progress?: number },
-        Partial<{ name: string; progress: number }>
+        { id: string; user_id: string; name: string; progress: number; description: string } & Timestamps,
+        { user_id: string; name: string; progress?: number; description?: string },
+        Partial<{ name: string; progress: number; description: string }>
       >;
       finance_entries: Tbl<
-        { id: string; user_id: string; type: "income" | "expense"; name: string; amount: number; category: string; entry_date: string; recurring: boolean } & Timestamps,
-        { user_id: string; type: "income" | "expense"; name: string; amount: number; category?: string; entry_date?: string; recurring?: boolean },
-        Partial<{ type: "income" | "expense"; name: string; amount: number; category: string; entry_date: string; recurring: boolean }>
+        { id: string; user_id: string; type: "income" | "expense"; name: string; amount: number; category: string; entry_date: string; recurring: boolean; planned: boolean } & Timestamps,
+        { user_id: string; type: "income" | "expense"; name: string; amount: number; category?: string; entry_date?: string; recurring?: boolean; planned?: boolean },
+        Partial<{ type: "income" | "expense"; name: string; amount: number; category: string; entry_date: string; recurring: boolean; planned: boolean }>
       >;
       financial_goals: Tbl<
-        { id: string; user_id: string; name: string; target: number; saved: number } & Timestamps,
-        { user_id: string; name: string; target: number; saved?: number },
-        Partial<{ name: string; target: number; saved: number }>
+        { id: string; user_id: string; name: string; target: number; saved: number; description: string } & Timestamps,
+        { user_id: string; name: string; target: number; saved?: number; description?: string },
+        Partial<{ name: string; target: number; saved: number; description: string }>
       >;
       nutrition_goals: Tbl<
         { user_id: string; calories: number; protein: number; carbs: number; fat: number; updated_at: string },
