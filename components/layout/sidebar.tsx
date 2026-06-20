@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/constants";
+import { SidebarLevel } from "@/components/features/sidebar-level";
+import type { Profile } from "@/types";
 
-export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function Sidebar({ open, onClose, profile }: { open: boolean; onClose: () => void; profile: Profile }) {
   const pathname = usePathname();
 
   return (
@@ -17,6 +19,8 @@ export function Sidebar({ open, onClose }: { open: boolean; onClose: () => void 
             <div className="brand-sub">Personal SaaS</div>
           </div>
         </div>
+
+        <SidebarLevel profile={profile} />
 
         <div className="nav-section-label">Navigation</div>
         {NAV_ITEMS.map((item) => {

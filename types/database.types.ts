@@ -34,6 +34,10 @@ export interface Database {
           pref_daily: boolean;
           streak_count: number;
           streak_last_active_day: string | null;
+          xp: number;
+          routine_streak_count: number;
+          routine_streak_last_day: string | null;
+          routine_deadline: string;
           created_at: string;
           updated_at: string;
         },
@@ -46,6 +50,10 @@ export interface Database {
           pref_daily?: boolean;
           streak_count?: number;
           streak_last_active_day?: string | null;
+          xp?: number;
+          routine_streak_count?: number;
+          routine_streak_last_day?: string | null;
+          routine_deadline?: string;
         },
         Partial<{
           email: string | null;
@@ -55,6 +63,10 @@ export interface Database {
           pref_daily: boolean;
           streak_count: number;
           streak_last_active_day: string | null;
+          xp: number;
+          routine_streak_count: number;
+          routine_streak_last_day: string | null;
+          routine_deadline: string;
         }>
       >;
       stats: Tbl<
@@ -78,9 +90,9 @@ export interface Database {
         Partial<{ name: string; minutes: number; category: string; done: boolean; position: number; frequency: "daily" | "weekly" | "monthly" }>
       >;
       tasks: Tbl<
-        { id: string; user_id: string; name: string; minutes: number; category: string; done: boolean; position: number } & Timestamps,
-        { user_id: string; name: string; minutes?: number; category?: string; done?: boolean; position?: number },
-        Partial<{ name: string; minutes: number; category: string; done: boolean; position: number }>
+        { id: string; user_id: string; name: string; minutes: number; category: string; done: boolean; position: number; scope: "today" | "other" } & Timestamps,
+        { user_id: string; name: string; minutes?: number; category?: string; done?: boolean; position?: number; scope?: "today" | "other" },
+        Partial<{ name: string; minutes: number; category: string; done: boolean; position: number; scope: "today" | "other" }>
       >;
       objectives: Tbl<
         { id: string; user_id: string; period: "monthly" | "yearly"; name: string; actions: string; progress: number; details: Json } & Timestamps,
@@ -126,6 +138,11 @@ export interface Database {
         { id: string; user_id: string; name: string; done: boolean } & Timestamps,
         { user_id: string; name: string; done?: boolean },
         Partial<{ name: string; done: boolean }>
+      >;
+      sleep_entries: Tbl<
+        { id: string; user_id: string; sleep_date: string; hours: number; kind: "nuit" | "recup"; note: string } & Timestamps,
+        { user_id: string; sleep_date?: string; hours?: number; kind?: "nuit" | "recup"; note?: string },
+        Partial<{ sleep_date: string; hours: number; kind: "nuit" | "recup"; note: string }>
       >;
     };
     Views: Record<string, never>;

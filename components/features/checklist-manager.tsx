@@ -4,13 +4,16 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   DndContext,
-  closestCenter,
+  closestCorners,
   KeyboardSensor,
   PointerSensor,
   TouchSensor,
+  useDroppable,
   useSensor,
   useSensors,
   type DragEndEvent,
+  type DragOverEvent,
+  type DragStartEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -23,6 +26,8 @@ import { CSS } from "@dnd-kit/utilities";
 import { api } from "@/lib/api-client";
 import { EmptyState } from "@/components/ui/empty-state";
 
+const CONTAINER_PREFIX = "container::";
+
 interface Item {
   id: string;
   name: string;
@@ -31,11 +36,13 @@ interface Item {
   minutes?: number;
   position?: number;
   frequency?: string;
+  scope?: string;
 }
 
 interface TabGroups {
-  field: "frequency";
+  field: string; // e.g. "frequency" (routines) or "scope" (tasks)
   tabs: { value: string; label: string }[];
+  layout?: "tabs" | "sections"; // tabs = switch between; sections = all visible + drag between
 }
 
 interface RowProps {
@@ -48,13 +55,13 @@ interface RowProps {
 }
 
 interface ChecklistManagerProps {
-  resource: string; // e.g. "quests"
+  resource: string;
   initialItems: Item[];
   withMinutes?: boolean;
   withCategory?: boolean;
   togglable?: boolean;
-  reorderable?: boolean; // enables drag-and-drop ordering (persisted via `position`)
-  groups?: TabGroups; // splits the list into tabs by a field (e.g. routine frequency)
+  reorderable?: boolean;
+  groups?: TabGroups;
   emptyIcon?: string;
   emptyText?: string;
   addLabel?: string;
@@ -91,24 +98,12 @@ function RowInner({ item, withMinutes, withCategory, togglable, onToggle, onRemo
   );
 }
 
-// Draggable row: only the grip handle starts a drag, so the rest stays clickable.
 function SortableRow(props: RowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.item.id });
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    zIndex: isDragging ? 5 : undefined,
-  };
+  const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 5 : undefined };
   return (
     <li ref={setNodeRef} style={style} className={`task-item${props.item.done ? " is-done" : ""}${isDragging ? " is-dragging" : ""}`}>
-      <button
-        type="button"
-        className="task-grip"
-        aria-label="Glisser pour réordonner"
-        title="Glisser pour réordonner"
-        {...attributes}
-        {...listeners}
-      >
+      <button type="button" className="task-grip" aria-label="Glisser pour réordonner" title="Glisser pour réordonner" {...attributes} {...listeners}>
         ⠿
       </button>
       <RowInner {...props} />
@@ -116,13 +111,31 @@ function SortableRow(props: RowProps) {
   );
 }
 
-/**
- * Generic CRUD list bound to /api/<resource>. Powers quests, routine, tasks,
- * mementos, etc. Mutations are optimistic; we router.refresh() afterwards so
- * the dashboard/KPIs stay in sync. When `reorderable`, rows can be dragged
- * (mouse, touch, keyboard) and the order is saved via `position`. When
- * `groups` is set, the list is split into tabs by a field (e.g. frequency).
- */
+// A droppable section so items can be dropped into an empty group too.
+function Section({ value, label, items, rowProps, emptyIcon }: {
+  value: string;
+  label: string;
+  items: Item[];
+  rowProps: Omit<RowProps, "item">;
+  emptyIcon: string;
+}) {
+  const { setNodeRef, isOver } = useDroppable({ id: `${CONTAINER_PREFIX}${value}` });
+  return (
+    <div style={{ marginTop: 8 }}>
+      <div className="nav-section-label" style={{ marginTop: 4 }}>{label}</div>
+      <SortableContext items={items.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+        <ul ref={setNodeRef} className={`checklist section-drop${isOver ? " is-over" : ""}`}>
+          {items.length === 0 ? (
+            <li className="section-empty">{emptyIcon} Dépose une tâche ici</li>
+          ) : (
+            items.map((item) => <SortableRow key={item.id} item={item} {...rowProps} />)
+          )}
+        </ul>
+      </SortableContext>
+    </div>
+  );
+}
+
 export function ChecklistManager({
   resource,
   initialItems,
@@ -143,11 +156,15 @@ export function ChecklistManager({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [activeTab, setActiveTab] = useState(groups?.tabs[0]?.value ?? "");
+  const [addGroup, setAddGroup] = useState(groups?.tabs[0]?.value ?? "");
+
+  const sections = groups?.layout === "sections";
 
   const itemsRef = useRef(items);
   useEffect(() => {
     itemsRef.current = items;
   }, [items]);
+  const dragSnapshot = useRef<Map<string, { g: string; p: number }>>(new Map());
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
@@ -156,15 +173,21 @@ export function ChecklistManager({
   );
 
   const groupOf = (it: Item) => (groups ? String((it as unknown as Record<string, unknown>)[groups.field] ?? "") : "");
+  const groupTarget = sections ? addGroup : activeTab;
 
-  // What we actually render: sorted by position when reorderable, filtered by tab when grouped.
+  // Single-list display (plain or tabs): sort by position, filter by active tab.
   const displayItems = useMemo(() => {
     let base = items;
     if (reorderable) base = [...items].sort((a, b) => (a.position ?? 0) - (b.position ?? 0));
-    if (groups) base = base.filter((it) => groupOf(it) === activeTab);
+    if (groups && !sections) base = base.filter((it) => groupOf(it) === activeTab);
     return base;
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [items, reorderable, groups, activeTab]);
+  }, [items, reorderable, groups, sections, activeTab]);
+
+  // Per-group lists for the sections layout (array order preserved).
+  function itemsOfGroup(value: string) {
+    return items.filter((it) => groupOf(it) === value);
+  }
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -175,8 +198,8 @@ export function ChecklistManager({
       const payload: Record<string, unknown> = { name };
       if (withMinutes) payload.minutes = Number(minutes || 1);
       if (withCategory && category) payload.category = category;
-      if (groups) payload[groups.field] = activeTab;
-      if (reorderable) payload.position = displayItems.length; // new items go last (within tab)
+      if (groups) payload[groups.field] = groupTarget;
+      if (reorderable) payload.position = sections ? itemsOfGroup(groupTarget).length : displayItems.length;
       const created = await api.post<Item>(`/api/${resource}`, payload);
       setItems((prev) => [...prev, created]);
       setName("");
@@ -216,7 +239,8 @@ export function ChecklistManager({
     }
   }
 
-  async function onDragEnd(event: DragEndEvent) {
+  // ----- Single-list reorder (plain / tabs) -----
+  async function onDragEndSingle(event: DragEndEvent) {
     const { active, over } = event;
     if (!over || active.id === over.id) return;
     const current = displayItems;
@@ -226,10 +250,7 @@ export function ChecklistManager({
     const newOrder = arrayMove(current, from, to);
     const posById = new Map(newOrder.map((it, idx) => [it.id, idx]));
     setItems((prev) => prev.map((it) => (posById.has(it.id) ? { ...it, position: posById.get(it.id)! } : it)));
-    // Persist only rows whose index changed.
-    const changed = newOrder
-      .map((it, idx) => ({ it, idx }))
-      .filter(({ it, idx }) => (it.position ?? 0) !== idx);
+    const changed = newOrder.map((it, idx) => ({ it, idx })).filter(({ it, idx }) => (it.position ?? 0) !== idx);
     try {
       await Promise.all(changed.map(({ it, idx }) => api.patch(`/api/${resource}/${it.id}`, { position: idx })));
       router.refresh();
@@ -238,42 +259,83 @@ export function ChecklistManager({
     }
   }
 
-  const rowProps = { withMinutes, withCategory, togglable, onToggle: toggle, onRemove: remove };
+  // ----- Multi-section reorder + cross-section move -----
+  function containerOf(id: string): string | undefined {
+    if (id.startsWith(CONTAINER_PREFIX)) return id.slice(CONTAINER_PREFIX.length);
+    const it = itemsRef.current.find((i) => i.id === id);
+    return it ? groupOf(it) : undefined;
+  }
 
-  const list =
-    displayItems.length === 0 ? (
-      <EmptyState icon={emptyIcon}>{emptyText}</EmptyState>
-    ) : reorderable ? (
-      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
-        <SortableContext items={displayItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
-          <ul className="checklist">
-            {displayItems.map((item) => (
-              <SortableRow key={item.id} item={item} {...rowProps} />
-            ))}
-          </ul>
-        </SortableContext>
-      </DndContext>
-    ) : (
-      <ul className="checklist">
-        {displayItems.map((item) => (
-          <li key={item.id} className={`task-item${item.done ? " is-done" : ""}`}>
-            <RowInner item={item} {...rowProps} />
-          </li>
-        ))}
-      </ul>
-    );
+  function onDragStart(event: DragStartEvent) {
+    if (!groups) return;
+    dragSnapshot.current = new Map(itemsRef.current.map((it) => [it.id, { g: groupOf(it), p: it.position ?? 0 }]));
+    void event;
+  }
+
+  function onDragOver(event: DragOverEvent) {
+    const { active, over } = event;
+    if (!over || !groups) return;
+    const activeC = containerOf(String(active.id));
+    const overC = containerOf(String(over.id));
+    if (!activeC || !overC || activeC === overC) return;
+    setItems((prev) => {
+      const activeItem = prev.find((i) => i.id === active.id);
+      if (!activeItem) return prev;
+      const without = prev.filter((i) => i.id !== active.id);
+      const moved = { ...activeItem, [groups.field]: overC } as Item;
+      const overIndex = without.findIndex((i) => i.id === over.id);
+      if (overIndex === -1) return [...without, moved]; // dropped on the (empty) container
+      return [...without.slice(0, overIndex), moved, ...without.slice(overIndex)];
+    });
+  }
+
+  async function onDragEndSections(event: DragEndEvent) {
+    const { active, over } = event;
+    if (!groups) return;
+    if (over) {
+      const activeC = containerOf(String(active.id));
+      const overC = containerOf(String(over.id));
+      if (activeC && overC && activeC === overC && active.id !== over.id) {
+        setItems((prev) => {
+          const oldIndex = prev.findIndex((i) => i.id === active.id);
+          const newIndex = prev.findIndex((i) => i.id === over.id);
+          return oldIndex === -1 || newIndex === -1 ? prev : arrayMove(prev, oldIndex, newIndex);
+        });
+      }
+    }
+    // Persist: reassign positions per group (array order) and patch what changed.
+    const counters: Record<string, number> = {};
+    const finalItems = itemsRef.current.map((it) => {
+      const g = groupOf(it);
+      const p = counters[g] ?? 0;
+      counters[g] = p + 1;
+      return { ...it, position: p };
+    });
+    setItems(finalItems);
+    const snap = dragSnapshot.current;
+    const changed = finalItems.filter((it) => {
+      const before = snap.get(it.id);
+      return !before || before.g !== groupOf(it) || before.p !== it.position;
+    });
+    if (!changed.length) return;
+    try {
+      await Promise.all(
+        changed.map((it) => api.patch(`/api/${resource}/${it.id}`, { [groups.field]: groupOf(it), position: it.position })),
+      );
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erreur lors du réordonnancement.");
+    }
+  }
+
+  const rowProps = { withMinutes, withCategory, togglable, onToggle: toggle, onRemove: remove };
 
   return (
     <div className="card">
-      {groups && (
+      {groups && !sections && (
         <div className="section-tabs">
           {groups.tabs.map((t) => (
-            <button
-              key={t.value}
-              type="button"
-              className={`tab${activeTab === t.value ? " active" : ""}`}
-              onClick={() => setActiveTab(t.value)}
-            >
+            <button key={t.value} type="button" className={`tab${activeTab === t.value ? " active" : ""}`} onClick={() => setActiveTab(t.value)}>
               {t.label}
             </button>
           ))}
@@ -281,44 +343,53 @@ export function ChecklistManager({
       )}
 
       <form onSubmit={add} className="checklist-add">
-        <input
-          className="auth-input"
-          style={{ flex: "3 1 220px" }}
-          placeholder="Nom…"
-          value={name}
-          onChange={(e) => setName(e.target.value)}
-        />
+        <input className="auth-input" style={{ flex: "3 1 200px" }} placeholder="Nom…" value={name} onChange={(e) => setName(e.target.value)} />
         {withMinutes && (
-          <input
-            className="auth-input"
-            style={{ flex: "0 1 110px" }}
-            type="number"
-            min={1}
-            placeholder="min"
-            value={minutes}
-            onChange={(e) => setMinutes(e.target.value)}
-          />
+          <input className="auth-input" style={{ flex: "0 1 100px" }} type="number" min={1} placeholder="min" value={minutes} onChange={(e) => setMinutes(e.target.value)} />
         )}
         {withCategory && (
-          <input
-            className="auth-input"
-            style={{ flex: "1 1 150px" }}
-            placeholder="Catégorie"
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-          />
+          <input className="auth-input" style={{ flex: "1 1 140px" }} placeholder="Catégorie" value={category} onChange={(e) => setCategory(e.target.value)} />
         )}
-        <button className="checklist-submit" type="submit" disabled={busy}>
-          {addLabel}
-        </button>
+        {sections && groups && (
+          <select className="auth-input" style={{ flex: "0 1 140px" }} value={addGroup} onChange={(e) => setAddGroup(e.target.value)}>
+            {groups.tabs.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+          </select>
+        )}
+        <button className="checklist-submit" type="submit" disabled={busy}>{addLabel}</button>
       </form>
 
       {error && <p className="auth-error">{error}</p>}
-      {reorderable && displayItems.length > 1 && (
-        <p className="card-sub" style={{ margin: "0 0 10px" }}>↕ Glisse une ligne par la poignée pour changer l’ordre.</p>
+      {reorderable && items.length > 1 && (
+        <p className="card-sub" style={{ margin: "0 0 10px" }}>
+          ↕ Glisse une ligne par la poignée{sections ? " (y compris d’une section à l’autre)" : ""} pour réorganiser.
+        </p>
       )}
 
-      {list}
+      {sections && groups ? (
+        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragStart={onDragStart} onDragOver={onDragOver} onDragEnd={onDragEndSections}>
+          {groups.tabs.map((t) => (
+            <Section key={t.value} value={t.value} label={t.label} items={itemsOfGroup(t.value)} rowProps={rowProps} emptyIcon={emptyIcon} />
+          ))}
+        </DndContext>
+      ) : displayItems.length === 0 ? (
+        <EmptyState icon={emptyIcon}>{emptyText}</EmptyState>
+      ) : reorderable ? (
+        <DndContext sensors={sensors} collisionDetection={closestCorners} onDragEnd={onDragEndSingle}>
+          <SortableContext items={displayItems.map((i) => i.id)} strategy={verticalListSortingStrategy}>
+            <ul className="checklist">
+              {displayItems.map((item) => <SortableRow key={item.id} item={item} {...rowProps} />)}
+            </ul>
+          </SortableContext>
+        </DndContext>
+      ) : (
+        <ul className="checklist">
+          {displayItems.map((item) => (
+            <li key={item.id} className={`task-item${item.done ? " is-done" : ""}`}>
+              <RowInner item={item} {...rowProps} />
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

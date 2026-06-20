@@ -3,21 +3,20 @@
 import { useState } from "react";
 import { Sidebar } from "./sidebar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
+import { Avatar } from "@/components/ui/avatar";
 import type { Profile } from "@/types";
 
 interface ShellProps {
   profile: Profile;
-  level: number;
-  score: number;
   children: React.ReactNode;
 }
 
-export function AppShell({ profile, level, score, children }: ShellProps) {
+export function AppShell({ profile, children }: ShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
     <div className="app">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} profile={profile} />
 
       <main className="main">
         <header className="topbar">
@@ -32,12 +31,10 @@ export function AppShell({ profile, level, score, children }: ShellProps) {
             <div className="pill warn" title="Série de jours actifs">
               🔥 {profile.streak_count} j
             </div>
-            <div className="pill">⭐ Lv {level}</div>
             <a href="/settings" className="user-chip" style={{ textDecoration: "none" }}>
-              <div className="av">{profile.avatar}</div>
+              <Avatar avatar={profile.avatar} size={34} className="av" />
               <div>
                 <div className="name">{profile.display_name}</div>
-                <div className="lvl">Score {score}</div>
               </div>
             </a>
           </div>

@@ -26,6 +26,7 @@ const APPEND_TABLES: Record<string, string[]> = {
   workouts: ["type", "workout_date", "data"],
   dangers: ["name", "category", "impact"],
   mementos: ["name", "done"],
+  sleep_entries: ["sleep_date", "hours", "kind", "note"],
 };
 
 const PROFILE_FIELDS = [
@@ -35,6 +36,10 @@ const PROFILE_FIELDS = [
   "pref_daily",
   "streak_count",
   "streak_last_active_day",
+  "xp",
+  "routine_streak_count",
+  "routine_streak_last_day",
+  "routine_deadline",
 ];
 const NUTRITION_FIELDS = ["calories", "protein", "carbs", "fat"];
 const STAT_FIELDS = ["key", "name", "value", "is_custom"];

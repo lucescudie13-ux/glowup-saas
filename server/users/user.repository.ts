@@ -35,4 +35,23 @@ export const userRepository = {
       .eq("id", userId);
     if (error) throw error;
   },
+
+  async setRoutineStreak(userId: string, count: number, lastDay: string): Promise<void> {
+    const supabase = await createClient();
+    const { error } = await supabase
+      .from("profiles")
+      .update({ routine_streak_count: count, routine_streak_last_day: lastDay })
+      .eq("id", userId);
+    if (error) throw error;
+  },
+
+  /** Adds `amount` XP (clamped ≥ 0) and returns the new total. */
+  async addXp(userId: string, amount: number): Promise<number> {
+    const supabase = await createClient();
+    const current = await this.getProfile(userId);
+    const next = Math.max(0, (current?.xp ?? 0) + Math.max(0, Math.round(amount)));
+    const { error } = await supabase.from("profiles").update({ xp: next }).eq("id", userId);
+    if (error) throw error;
+    return next;
+  },
 };

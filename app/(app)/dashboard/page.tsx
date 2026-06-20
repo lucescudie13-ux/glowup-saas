@@ -50,7 +50,7 @@ export default async function DashboardPage() {
 
   const mementoRows = (mementos.data ?? []) as Memento[];
   const routineRows = (routines.data ?? []) as Routine[];
-  const taskRows = (tasks.data ?? []) as Task[];
+  const taskRows = ((tasks.data ?? []) as Task[]).filter((t) => (t.scope ?? "today") === "today");
   const monthlyRows = (monthly.data ?? []) as Objective[];
   const yearlyRows = (yearly.data ?? []) as Objective[];
   const questRows = (quests.data ?? []) as Quest[];

@@ -34,4 +34,27 @@ export const userService = {
     await repo.setStreak(userId, count, today);
     return count;
   },
+
+  /** Credits XP (e.g. from an accomplished action). Returns the new total. */
+  addXp: (userId: string, amount: number) => repo.addXp(userId, amount),
+
+  /**
+   * Routine streak — bumped when the daily routine is fully completed.
+   * Idempotent per day; same day/yesterday/otherwise mirror bumpStreak.
+   * Returns the new routine streak count.
+   */
+  async bumpRoutineStreak(userId: string): Promise<number> {
+    const profile = await repo.getProfile(userId);
+    const today = dayKey();
+    if (!profile) return 0;
+    if (profile.routine_streak_last_day === today) return profile.routine_streak_count;
+
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const yKey = dayKey(yesterday);
+
+    const count = profile.routine_streak_last_day === yKey ? profile.routine_streak_count + 1 : 1;
+    await repo.setRoutineStreak(userId, count, today);
+    return count;
+  },
 };

@@ -5,7 +5,8 @@ import { PageHead } from "@/components/ui/page-head";
 import { ProgressBar } from "@/components/ui/progress-bar";
 import { ActionRecorder } from "@/components/features/action-recorder";
 import { CustomStatsManager } from "@/components/features/custom-stats-manager";
-import { characterLevel, money, percentage, todayISO } from "@/lib/utils";
+import { LevelHero } from "@/components/features/level-hero";
+import { levelFromXp, money, percentage, statsScore, todayISO } from "@/lib/utils";
 
 export default async function CharacterPage() {
   const user = await getCurrentUser();
@@ -31,7 +32,8 @@ export default async function CharacterPage() {
     supabase.from("dangers").select("*").eq("user_id", uid),
   ]);
 
-  const { avg, level, levelProgress } = characterLevel(stats);
+  const avg = statsScore(stats);
+  const { level } = levelFromXp(profile?.xp ?? 0);
 
   const questsDone = (quests.data ?? []).filter((q) => q.done).length;
   const routineDoneMin = (routines.data ?? []).filter((r) => r.done).reduce((s, r) => s + (r.minutes || 1), 0);
@@ -62,17 +64,12 @@ export default async function CharacterPage() {
     <div className="page section active">
       <PageHead title="Personnage" sub="Ta fiche, tes statistiques et tes indicateurs clés." />
 
-      {/* ===== Fiche personnage ===== */}
-      <div className="card" style={{ marginBottom: 16, display: "flex", gap: 16, alignItems: "center" }}>
-        <div style={{ fontSize: 52 }}>{profile?.avatar ?? "🧍‍♂️"}</div>
-        <div style={{ flex: 1 }}>
-          <h2 className="card-title" style={{ margin: 0 }}>{profile?.display_name ?? "Mon perso"}</h2>
-          <p className="card-sub" style={{ margin: "4px 0 8px" }}>
-            Niveau {level} · Score {avg}/100
-          </p>
-          <ProgressBar value={levelProgress} />
+      {/* ===== Fiche personnage (niveau + XP) ===== */}
+      {profile && (
+        <div style={{ marginBottom: 16 }}>
+          <LevelHero profile={profile} score={avg} />
         </div>
-      </div>
+      )}
 
       {/* ===== Indicateurs clés ===== */}
       <div className="grid grid-stats" style={{ marginBottom: 16 }}>

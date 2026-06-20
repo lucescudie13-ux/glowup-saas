@@ -16,6 +16,7 @@ export type Food = Tables<"foods">;
 export type Workout = Tables<"workouts">;
 export type Danger = Tables<"dangers">;
 export type Memento = Tables<"mementos">;
+export type SleepEntry = Tables<"sleep_entries">;
 
 export type ObjectivePeriod = "monthly" | "yearly";
 export type FinanceType = "income" | "expense";

@@ -18,6 +18,7 @@ export function FinancialGoalsManager({ initialGoals }: { initialGoals: Financia
   const [editName, setEditName] = useState("");
   const [editTarget, setEditTarget] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [addAmounts, setAddAmounts] = useState<Record<string, string>>({});
 
   const totalTarget = goals.reduce((s, g) => s + Number(g.target), 0);
   const totalSaved = goals.reduce((s, g) => s + Number(g.saved), 0);
@@ -63,6 +64,21 @@ export function FinancialGoalsManager({ initialGoals }: { initialGoals: Financia
     setGoals((prev) => prev.map((x) => (x.id === g.id ? { ...x, saved } : x)));
   }
   async function commitSaved(g: FinancialGoal, saved: number) {
+    try {
+      await api.patch(`/api/financial-goals/${g.id}`, { saved });
+      router.refresh();
+    } catch {
+      router.refresh();
+    }
+  }
+
+  // Add an increment to the already-saved amount (no manual total needed).
+  async function addAmount(g: FinancialGoal) {
+    const inc = Number(addAmounts[g.id]);
+    if (!inc) return;
+    const saved = Math.max(0, Number(g.saved) + inc);
+    setGoals((prev) => prev.map((x) => (x.id === g.id ? { ...x, saved } : x))); // optimistic
+    setAddAmounts((prev) => ({ ...prev, [g.id]: "" }));
     try {
       await api.patch(`/api/financial-goals/${g.id}`, { saved });
       router.refresh();
@@ -166,15 +182,42 @@ export function FinancialGoalsManager({ initialGoals }: { initialGoals: Financia
                         <div className="big-bar"><div className="big-bar-fill" style={{ width: `${pct}%` }} /></div>
                         <span className="objective-percent">{pct}%</span>
                       </div>
-                      <label className="field-label" style={{ marginTop: 10 }}>Montant épargné</label>
-                      <input
-                        className="auth-input"
-                        type="number"
-                        style={{ maxWidth: 220 }}
-                        value={g.saved}
-                        onChange={(e) => changeSaved(g, Number(e.target.value))}
-                        onBlur={(e) => commitSaved(g, Number(e.target.value))}
-                      />
+                      <div style={{ display: "flex", gap: 16, flexWrap: "wrap", marginTop: 10 }}>
+                        <div>
+                          <label className="field-label">Ajouter un montant</label>
+                          <div style={{ display: "flex", gap: 8 }}>
+                            <input
+                              className="auth-input"
+                              type="number"
+                              inputMode="decimal"
+                              placeholder="+ montant"
+                              style={{ maxWidth: 140 }}
+                              value={addAmounts[g.id] ?? ""}
+                              onChange={(e) => setAddAmounts((prev) => ({ ...prev, [g.id]: e.target.value }))}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter") {
+                                  e.preventDefault();
+                                  addAmount(g);
+                                }
+                              }}
+                            />
+                            <button type="button" className="checklist-submit" onClick={() => addAmount(g)} style={{ minWidth: 90 }}>
+                              + Ajouter
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="field-label">Total épargné</label>
+                          <input
+                            className="auth-input"
+                            type="number"
+                            style={{ maxWidth: 140 }}
+                            value={g.saved}
+                            onChange={(e) => changeSaved(g, Number(e.target.value))}
+                            onBlur={(e) => commitSaved(g, Number(e.target.value))}
+                          />
+                        </div>
+                      </div>
                     </>
                   )}
                 </div>

@@ -4,12 +4,17 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { ACTION_PRESETS } from "@/lib/constants";
+import { actionXp } from "@/lib/utils";
 import type { Stat } from "@/types";
 
 interface RecordResult {
   action: { id: string; name: string };
   stats: Stat[];
   streak: number;
+  xpGained: number;
+  xp: number;
+  level: number;
+  leveledUp: boolean;
 }
 
 export function ActionRecorder({ stats }: { stats: Stat[] }) {
@@ -42,7 +47,12 @@ export function ActionRecorder({ stats }: { stats: Stat[] }) {
     setError(null);
     try {
       const res = await api.post<RecordResult>("/api/actions", { name, deltas: nonZero });
-      setFlash(`Action enregistrée · série ${res.streak} j 🔥`);
+      const xpPart = res.xpGained > 0 ? ` · +${res.xpGained} XP` : "";
+      setFlash(
+        res.leveledUp
+          ? `🎉 Niveau ${res.level} atteint !${xpPart} · série ${res.streak} j 🔥`
+          : `Action enregistrée${xpPart} · série ${res.streak} j 🔥`,
+      );
       setName("");
       setDeltas({});
       router.refresh();
@@ -61,11 +71,15 @@ export function ActionRecorder({ stats }: { stats: Stat[] }) {
       </div>
 
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-        {Object.keys(ACTION_PRESETS).map((p) => (
-          <button key={p} type="button" className="secondary-btn" onClick={() => applyPreset(p)}>
-            {p}
-          </button>
-        ))}
+        {Object.entries(ACTION_PRESETS).map(([p, preset]) => {
+          const xp = actionXp(preset.deltas);
+          return (
+            <button key={p} type="button" className="secondary-btn" onClick={() => applyPreset(p)}>
+              {p}
+              {xp > 0 && <span style={{ color: "var(--cyan-soft)", marginLeft: 6 }}>+{xp} XP</span>}
+            </button>
+          );
+        })}
       </div>
 
       <form onSubmit={submit}>

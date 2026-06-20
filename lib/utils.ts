@@ -12,13 +12,45 @@ export function money(amount: number): string {
   return `${Number(amount || 0).toLocaleString("fr-FR", { maximumFractionDigits: 2 })} €`;
 }
 
-/** Character level + score from the 8 stats (avg/10, min 1). */
-export function characterLevel(stats: { value: number }[]) {
-  if (!stats.length) return { avg: 0, level: 1, levelProgress: 0 };
-  const avg = Math.round(stats.reduce((s, x) => s + x.value, 0) / stats.length);
-  const level = Math.max(1, Math.floor(avg / 10));
-  const levelProgress = (avg % 10) * 10;
-  return { avg, level, levelProgress };
+/** Character "score" = average of the 8 stats (0..100). */
+export function statsScore(stats: { value: number }[]): number {
+  if (!stats.length) return 0;
+  return Math.round(stats.reduce((s, x) => s + x.value, 0) / stats.length);
+}
+
+// ----- Levels / XP -------------------------------------------------------
+// XP accumulates from accomplishments (actions). Each level costs a bit more
+// than the previous; filling a level's bar to 100% advances to the next.
+
+export const MAX_LEVEL = 100;
+
+/** XP required to advance FROM `level` to `level + 1`. Gently rising curve. */
+export function xpToAdvance(level: number): number {
+  return 100 + (Math.max(1, level) - 1) * 20; // L1:100, L2:120, … L99:2060
+}
+
+/** XP earned by an action = sum of its positive deltas (the progression part). */
+export function actionXp(deltas: Record<string, number>): number {
+  return Object.values(deltas).reduce((s, v) => s + Math.max(0, Math.round(v)), 0);
+}
+
+/**
+ * Derive level + bar progress from total accumulated XP.
+ * Caps at MAX_LEVEL (bar shows full once maxed out).
+ */
+export function levelFromXp(totalXp: number) {
+  const xp = Math.max(0, Math.floor(totalXp || 0));
+  let level = 1;
+  let remaining = xp;
+  while (level < MAX_LEVEL && remaining >= xpToAdvance(level)) {
+    remaining -= xpToAdvance(level);
+    level++;
+  }
+  const maxed = level >= MAX_LEVEL;
+  const need = maxed ? 0 : xpToAdvance(level);
+  const into = maxed ? 0 : remaining;
+  const progress = maxed ? 100 : Math.round((into / need) * 100);
+  return { level, xpIntoLevel: into, xpForNext: need, progress, totalXp: xp, maxed };
 }
 
 export function todayISO(): string {

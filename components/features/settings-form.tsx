@@ -3,9 +3,36 @@
 import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
+import { Avatar, isImageAvatar } from "@/components/ui/avatar";
 import type { Profile } from "@/types";
 
 const AVATARS = ["🧍‍♂️", "🧍‍♀️", "🦊", "🐺", "🦁", "🐯", "🚀", "⚡", "🔥", "🧠", "💪", "🌟"];
+
+/** Reads an image file and returns a small, square, center-cropped JPEG data URL. */
+function fileToAvatarDataUrl(file: File, size = 128): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      URL.revokeObjectURL(url);
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return reject(new Error("Canvas non supporté."));
+      const side = Math.min(img.width, img.height);
+      const sx = (img.width - side) / 2;
+      const sy = (img.height - side) / 2;
+      ctx.drawImage(img, sx, sy, side, side, 0, 0, size, size);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("Image illisible."));
+    };
+    img.src = url;
+  });
+}
 
 export function SettingsForm({ profile }: { profile: Profile }) {
   const router = useRouter();
@@ -13,10 +40,27 @@ export function SettingsForm({ profile }: { profile: Profile }) {
   const [avatar, setAvatar] = useState(profile.avatar);
   const [prefNotif, setPrefNotif] = useState(profile.pref_notif);
   const [prefDaily, setPrefDaily] = useState(profile.pref_daily);
+  const [routineDeadline, setRoutineDeadline] = useState(profile.routine_deadline ?? "21:00");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
   const [importMsg, setImportMsg] = useState<string | null>(null);
+  const [avatarMsg, setAvatarMsg] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  async function pickAvatarImage(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setAvatarMsg(null);
+    try {
+      if (!file.type.startsWith("image/")) throw new Error("Choisis un fichier image.");
+      setAvatar(await fileToAvatarDataUrl(file));
+    } catch (err) {
+      setAvatarMsg(err instanceof Error ? err.message : "Image illisible.");
+    } finally {
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+    }
+  }
 
   async function save(e: React.FormEvent) {
     e.preventDefault();
@@ -28,6 +72,7 @@ export function SettingsForm({ profile }: { profile: Profile }) {
         avatar,
         pref_notif: prefNotif,
         pref_daily: prefDaily,
+        routine_deadline: routineDeadline,
       });
       setSaved(true);
       router.refresh();
@@ -77,22 +122,47 @@ export function SettingsForm({ profile }: { profile: Profile }) {
           <input className="auth-input" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
         </label>
 
-        <span className="auth-field" style={{ display: "block" }}>
-          <span style={{ display: "block", fontSize: 13, color: "var(--muted)", marginBottom: 6 }}>Avatar</span>
-          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-            {AVATARS.map((a) => (
-              <button
-                type="button"
-                key={a}
-                onClick={() => setAvatar(a)}
-                className={avatar === a ? "main-btn" : "secondary-btn"}
-                style={{ fontSize: 20, padding: "6px 10px" }}
-              >
-                {a}
+        <div className="auth-field" style={{ display: "block" }}>
+          <span style={{ display: "block", fontSize: 13, color: "var(--muted)", marginBottom: 10 }}>Avatar</span>
+          <div className="avatar-edit">
+            <Avatar avatar={avatar} size={104} className="avatar-preview-lg" />
+            <div className="avatar-edit-actions">
+              <button type="button" className="secondary-btn" onClick={() => avatarInputRef.current?.click()}>
+                🖼️ Importer une photo
               </button>
-            ))}
+              {isImageAvatar(avatar) && (
+                <button type="button" className="ghost-btn" onClick={() => setAvatar("🧍‍♂️")}>
+                  Revenir à un emoji
+                </button>
+              )}
+              <span className="card-sub">PNG ou JPG — recadrée en carré automatiquement.</span>
+            </div>
+            <input
+              ref={avatarInputRef}
+              type="file"
+              accept="image/*"
+              onChange={pickAvatarImage}
+              style={{ display: "none" }}
+            />
           </div>
-        </span>
+          {avatarMsg && <p className="auth-error" style={{ margin: "8px 0 0" }}>{avatarMsg}</p>}
+
+          {!isImageAvatar(avatar) && (
+            <div className="emoji-grid">
+              {AVATARS.map((a) => (
+                <button
+                  type="button"
+                  key={a}
+                  onClick={() => setAvatar(a)}
+                  className={`emoji-tile${avatar === a ? " active" : ""}`}
+                  aria-label={`Choisir l’emoji ${a}`}
+                >
+                  {a}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
         <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
           <input type="checkbox" checked={prefDaily} onChange={(e) => setPrefDaily(e.target.checked)} />
@@ -100,8 +170,20 @@ export function SettingsForm({ profile }: { profile: Profile }) {
         </label>
         <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
           <input type="checkbox" checked={prefNotif} onChange={(e) => setPrefNotif(e.target.checked)} />
-          <span>Notifications</span>
+          <span>Notifications (rappel de routine)</span>
         </label>
+        {prefNotif && (
+          <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+            <input
+              type="time"
+              className="auth-input"
+              style={{ width: 130 }}
+              value={routineDeadline}
+              onChange={(e) => setRoutineDeadline(e.target.value)}
+            />
+            <span className="card-sub">Heure limite du rappel si la routine du jour n’est pas terminée</span>
+          </label>
+        )}
 
         {saved && <p style={{ color: "var(--success)", fontSize: 14 }}>Enregistré ✓</p>}
 

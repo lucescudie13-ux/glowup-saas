@@ -17,6 +17,7 @@ const TABLES = [
   "workouts",
   "dangers",
   "mementos",
+  "sleep_entries",
 ] as const;
 
 export async function GET() {
