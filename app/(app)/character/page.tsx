@@ -7,6 +7,7 @@ import { ActionRecorder } from "@/components/features/action-recorder";
 import { CustomStatsManager } from "@/components/features/custom-stats-manager";
 import { LevelHero } from "@/components/features/level-hero";
 import { levelFromXp, money, percentage, statsScore, todayISO } from "@/lib/utils";
+import { workTime, formatMinutes } from "@/server/stats/worktime";
 
 export default async function CharacterPage() {
   const user = await getCurrentUser();
@@ -49,6 +50,8 @@ export default async function CharacterPage() {
   const calToday = (foods.data ?? []).reduce((s, f) => s + Number(f.calories), 0);
   const calGoal = goals.data?.calories ?? 0;
 
+  const work = await workTime(supabase, uid);
+
   const kpis = [
     { label: "Niveau", value: level, trend: `Score ${avg}/100` },
     { label: "Quêtes complétées", value: `${questsDone}/${quests.data?.length ?? 0}`, trend: quests.data?.length ? `${percentage(questsDone, quests.data.length)}%` : "—" },
@@ -58,6 +61,7 @@ export default async function CharacterPage() {
     { label: "Calories du jour", value: Math.round(calToday), trend: calGoal ? `objectif ${calGoal} kcal` : "objectif non défini" },
     { label: "Dangers listés", value: dangers.data?.length ?? 0, trend: "à surveiller" },
     { label: "Tâches du jour", value: tasks.data?.length ?? 0, trend: `${(tasks.data ?? []).filter((t) => t.done).length} faites` },
+    { label: "Temps de travail", value: formatMinutes(work.total), trend: `${formatMinutes(work.today)} aujourd'hui · ${formatMinutes(work.week)} / 7 j` },
   ];
 
   return (

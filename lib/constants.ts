@@ -2,6 +2,7 @@
 
 export const NAV_ITEMS = [
   { section: "dashboard", icon: "🏠", label: "Tableau de bord" },
+  { section: "recap", icon: "📈", label: "Récap hebdo" },
   { section: "character", icon: "🧍‍♂️", label: "Personnage" },
   { section: "quests", icon: "⚔️", label: "Quêtes spéciales" },
   { section: "routine", icon: "🔁", label: "Routine" },
@@ -13,8 +14,10 @@ export const NAV_ITEMS = [
   { section: "sante", icon: "❤️", label: "Santé" },
   { section: "dangers", icon: "🧨", label: "Dangers" },
   { section: "memento", icon: "📝", label: "Memento" },
+  { section: "reflection", icon: "🪞", label: "Réflexion" },
   { section: "history", icon: "📜", label: "Historique" },
   { section: "training", icon: "🏋️", label: "Entraînement" },
+  { section: "physique", icon: "📸", label: "Physique" },
 ] as const;
 
 // Example accomplishments. XP earned = sum of an action's positive deltas, so

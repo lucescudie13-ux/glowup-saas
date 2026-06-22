@@ -1,11 +1,15 @@
 import { z } from "zod";
 export const taskScopeSchema = z.enum(["today", "other"]);
+export const taskStatusSchema = z.enum(["todo", "doing", "done"]);
 export const createTaskSchema = z.object({
   name: z.string().trim().min(1, "Le nom est requis."),
   minutes: z.coerce.number().int().min(0).default(0),
   category: z.string().trim().min(1).default("Général"),
   position: z.coerce.number().int().min(0).optional(),
   scope: taskScopeSchema.optional(),
+  urgent: z.boolean().optional(),
+  important: z.boolean().optional(),
+  status: taskStatusSchema.optional(),
 });
 export const updateTaskSchema = z.object({
   name: z.string().trim().min(1).optional(),
@@ -14,6 +18,9 @@ export const updateTaskSchema = z.object({
   done: z.boolean().optional(),
   position: z.coerce.number().int().min(0).optional(),
   scope: taskScopeSchema.optional(),
+  urgent: z.boolean().optional(),
+  important: z.boolean().optional(),
+  status: taskStatusSchema.optional(),
 });
 export type CreateTaskInput = z.infer<typeof createTaskSchema>;
 export type UpdateTaskInput = z.infer<typeof updateTaskSchema>;
