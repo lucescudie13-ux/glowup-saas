@@ -1,5 +1,7 @@
 // server/users/user.service.ts
 import { userRepository as repo } from "./user.repository";
+import { findCosmetic, type CosmeticType } from "@/lib/constants";
+import { levelFromXp } from "@/lib/utils";
 import type { UpdateProfileInput } from "./user.validation";
 
 /** Local YYYY-MM-DD for a date (server-side, UTC). */
@@ -7,11 +9,35 @@ function dayKey(d = new Date()): string {
   return d.toISOString().slice(0, 10);
 }
 
+const EQUIP_FIELDS: [keyof UpdateProfileInput, CosmeticType][] = [
+  ["equipped_frame", "frame"],
+  ["equipped_badge", "badge"],
+  ["equipped_accent", "accent"],
+];
+
 export const userService = {
   getProfile: (userId: string) => repo.getProfile(userId),
 
-  updateProfile: (userId: string, patch: UpdateProfileInput) =>
-    repo.updateProfile(userId, patch),
+  /**
+   * Updates the profile. For cosmetic equip fields, silently drops any value
+   * that isn't a real cosmetic of the right type unlocked at the user's level
+   * (unequipping with null is always allowed) — guards against equipping a
+   * locked reward by hand-crafting a request.
+   */
+  async updateProfile(userId: string, patch: UpdateProfileInput) {
+    const sanitized: UpdateProfileInput = { ...patch };
+    if (EQUIP_FIELDS.some(([field]) => field in sanitized)) {
+      const profile = await repo.getProfile(userId);
+      const level = levelFromXp(profile?.xp ?? 0).level;
+      for (const [field, type] of EQUIP_FIELDS) {
+        const val = sanitized[field];
+        if (val == null) continue; // unequip is fine
+        const cos = findCosmetic(val as string);
+        if (!cos || cos.type !== type || cos.level > level) delete sanitized[field];
+      }
+    }
+    return repo.updateProfile(userId, sanitized);
+  },
 
   /**
    * Streak logic (ported from the prototype's bumpStreak):

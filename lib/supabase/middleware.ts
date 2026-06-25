@@ -2,7 +2,9 @@ import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { NextResponse, type NextRequest } from "next/server";
 import type { Database } from "@/types/database.types";
 
-const PUBLIC_PATHS = ["/", "/login", "/signup", "/auth"];
+// "/api/cron" is authorised by its own CRON_SECRET bearer token (Vercel Cron
+// calls it with no user session), so it must bypass the auth-redirect gate.
+const PUBLIC_PATHS = ["/", "/login", "/signup", "/auth", "/api/cron"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some(

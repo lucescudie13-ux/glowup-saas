@@ -9,13 +9,15 @@ export default async function BudgetPage() {
   const entries = await financeEntriesService.list(user!.id);
 
   const planned = entries.filter((e) => e.planned);
-  const recurringMonthly = entries
-    .filter((e) => e.recurring && !e.planned)
-    .reduce((s, e) => s + Number(e.amount), 0);
+  // Net recurring monthly outflow (expenses − income) — drives the forecast.
+  const recurring = entries.filter((e) => e.recurring && !e.planned);
+  const recurringMonthly =
+    recurring.filter((e) => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0) -
+    recurring.filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
 
   return (
     <div className="page section active">
-      <PageHead title="Budget" sub="Tes revenus, tes dépenses ponctuelles et récurrentes, et ton résultat du mois." />
+      <PageHead title="Budget" sub="Tes revenus et dépenses récurrents, et ton résultat mensuel." />
       <FinanceManager initialEntries={entries} />
       <BudgetForecast initialPlanned={planned} recurringMonthly={recurringMonthly} />
     </div>

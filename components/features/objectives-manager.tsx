@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SortableList } from "@/components/ui/sortable-list";
+import { persistPositions } from "@/lib/reorder";
 import type { Objective, ObjectivePeriod } from "@/types";
 
 export function ObjectivesManager({ initialItems }: { initialItems: Objective[] }) {
@@ -26,7 +28,7 @@ export function ObjectivesManager({ initialItems }: { initialItems: Objective[] 
     if (!name.trim()) return;
     setBusy(true);
     try {
-      const created = await api.post<Objective>("/api/objectives", { period, name, actions });
+      const created = await api.post<Objective>("/api/objectives", { period, name, actions, position: visible.length });
       setItems((prev) => [...prev, created]);
       setName("");
       setActions("");
@@ -34,6 +36,12 @@ export function ObjectivesManager({ initialItems }: { initialItems: Objective[] 
     } finally {
       setBusy(false);
     }
+  }
+
+  function reorder(ordered: Objective[]) {
+    const ids = new Set(ordered.map((o) => o.id));
+    setItems((prev) => [...ordered, ...prev.filter((o) => !ids.has(o.id))]);
+    persistPositions("objectives", ordered);
   }
 
   function startEdit(o: Objective) {
@@ -109,9 +117,9 @@ export function ObjectivesManager({ initialItems }: { initialItems: Objective[] 
       {visible.length === 0 ? (
         <EmptyState icon="🎯">Aucun objectif {period === "monthly" ? "du mois" : "de l’année"}.</EmptyState>
       ) : (
-        <div style={{ display: "grid", gap: 14 }}>
-          {visible.map((o) => (
-            <div className="objective" key={o.id}>
+        <SortableList items={visible} onReorder={reorder} gap={14}>
+          {(o) => (
+            <div className="objective">
               {editingId === o.id ? (
                 <div style={{ display: "grid", gap: 10 }}>
                   <input className="auth-input" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Objectif" />
@@ -157,8 +165,8 @@ export function ObjectivesManager({ initialItems }: { initialItems: Objective[] 
                 </>
               )}
             </div>
-          ))}
-        </div>
+          )}
+        </SortableList>
       )}
     </div>
   );

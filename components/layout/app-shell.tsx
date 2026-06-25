@@ -1,22 +1,41 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Sidebar } from "./sidebar";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { Avatar } from "@/components/ui/avatar";
+import { findCosmetic } from "@/lib/constants";
 import type { Profile } from "@/types";
+
+export interface CategoryGauge {
+  label: string;
+  value: number;
+  color: string;
+}
 
 interface ShellProps {
   profile: Profile;
+  categories?: CategoryGauge[];
   children: React.ReactNode;
 }
 
-export function AppShell({ profile, children }: ShellProps) {
+export function AppShell({ profile, categories, children }: ShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+
+  // Apply the equipped accent cosmetic (overrides --accent), if any.
+  const accent = findCosmetic(profile.equipped_accent);
+  useEffect(() => {
+    const root = document.documentElement;
+    if (accent?.type === "accent") root.style.setProperty("--cyan", accent.value);
+    else root.style.removeProperty("--cyan");
+    return () => {
+      root.style.removeProperty("--cyan");
+    };
+  }, [accent?.value, accent?.type]);
 
   return (
     <div className="app">
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} profile={profile} />
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} profile={profile} categories={categories} />
 
       <main className="main">
         <header className="topbar">

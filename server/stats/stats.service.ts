@@ -33,6 +33,7 @@ export const statsService = {
       name: input.name,
       value: input.value ?? 50,
       is_custom: true,
+      category: input.category ?? "personnel",
     });
   },
 

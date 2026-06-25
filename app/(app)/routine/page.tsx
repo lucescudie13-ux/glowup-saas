@@ -1,16 +1,24 @@
 import { getCurrentUser } from "@/lib/supabase/server";
 import { routinesService } from "@/server/routines/routines.service";
 import { userService } from "@/server/users/user.service";
+import { statsService } from "@/server/stats/stats.service";
 import { PageHead } from "@/components/ui/page-head";
 import { ChecklistManager } from "@/components/features/checklist-manager";
 import { RoutineReminder } from "@/components/features/routine-reminder";
+import { STAT_CATEGORIES, ENERGY_CATEGORY } from "@/lib/constants";
 
 export default async function RoutinePage() {
   const user = await getCurrentUser();
-  const [items, profile] = await Promise.all([
+  const [items, profile, stats] = await Promise.all([
     routinesService.list(user!.id),
     userService.getProfile(user!.id),
+    statsService.list(user!.id),
   ]);
+
+  // Category dropdown for daily quests = the statistics, grouped by main category.
+  const categoryOptions = [...STAT_CATEGORIES, ENERGY_CATEGORY]
+    .map((c) => ({ group: `${c.icon} ${c.label}`, options: stats.filter((s) => s.category === c.key).map((s) => s.name) }))
+    .filter((g) => g.options.length > 0);
 
   const daily = items.filter((r) => (r.frequency ?? "daily") === "daily");
   const dailyRemaining = daily.filter((r) => !r.done).length;
@@ -19,7 +27,7 @@ export default async function RoutinePage() {
 
   return (
     <div className="page section active">
-      <PageHead title="Routine" sub="Tes habitudes récurrentes : quotidiennes, hebdomadaires et mensuelles." />
+      <PageHead title="Quêtes quotidiennes" sub="Tes quêtes récurrentes : quotidiennes, hebdomadaires et mensuelles." />
 
       {/* ===== Série de routine ===== */}
       <div className="card routine-streak-card" style={{ marginBottom: 16 }}>
@@ -30,10 +38,10 @@ export default async function RoutinePage() {
           </div>
           <p className="card-sub" style={{ margin: "2px 0 0" }}>
             {dailyDone
-              ? "Routine du jour bouclée — série assurée pour aujourd’hui. 💪"
+              ? "Quêtes du jour bouclées — série assurée pour aujourd’hui. 💪"
               : daily.length === 0
-                ? "Ajoute des habitudes quotidiennes pour démarrer ta série."
-                : `Termine tes ${dailyRemaining} habitude${dailyRemaining > 1 ? "s" : ""} quotidienne${dailyRemaining > 1 ? "s" : ""} restante${dailyRemaining > 1 ? "s" : ""} pour la garder en vie.`}
+                ? "Ajoute des quêtes quotidiennes pour démarrer ta série."
+                : `Termine tes ${dailyRemaining} quête${dailyRemaining > 1 ? "s" : ""} quotidienne${dailyRemaining > 1 ? "s" : ""} restante${dailyRemaining > 1 ? "s" : ""} pour la garder en vie.`}
           </p>
         </div>
       </div>
@@ -48,8 +56,8 @@ export default async function RoutinePage() {
       <ChecklistManager
         resource="routines"
         initialItems={items}
-        withMinutes
         withCategory
+        categoryOptions={categoryOptions}
         reorderable
         groups={{
           field: "frequency",

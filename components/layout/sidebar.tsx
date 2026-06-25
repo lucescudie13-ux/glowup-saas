@@ -4,23 +4,25 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { NAV_ITEMS } from "@/lib/constants";
 import { SidebarLevel } from "@/components/features/sidebar-level";
+import { LogoMark } from "@/components/ui/logo";
+import type { CategoryGauge } from "@/components/layout/app-shell";
 import type { Profile } from "@/types";
 
-export function Sidebar({ open, onClose, profile }: { open: boolean; onClose: () => void; profile: Profile }) {
+export function Sidebar({ open, onClose, profile, categories }: { open: boolean; onClose: () => void; profile: Profile; categories?: CategoryGauge[] }) {
   const pathname = usePathname();
 
   return (
     <>
       <aside className={`sidebar${open ? " open" : ""}`} id="sidebar">
         <div className="brand">
-          <div className="brand-logo">⚡</div>
+          <div className="brand-logo" style={{ display: "inline-flex", alignItems: "center" }}><LogoMark size={30} /></div>
           <div>
             <div className="brand-title">Glow Up RPG</div>
             <div className="brand-sub">Personal SaaS</div>
           </div>
         </div>
 
-        <SidebarLevel profile={profile} />
+        <SidebarLevel profile={profile} categories={categories} />
 
         <div className="nav-section-label">Navigation</div>
         {NAV_ITEMS.map((item) => {

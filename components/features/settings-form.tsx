@@ -4,6 +4,7 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { Avatar, isImageAvatar } from "@/components/ui/avatar";
+import { PushToggle } from "@/components/features/push-toggle";
 import type { Profile } from "@/types";
 
 const AVATARS = ["🧍‍♂️", "🧍‍♀️", "🦊", "🐺", "🦁", "🐯", "🚀", "⚡", "🔥", "🧠", "💪", "🌟"];
@@ -40,6 +41,7 @@ export function SettingsForm({ profile }: { profile: Profile }) {
   const [avatar, setAvatar] = useState(profile.avatar);
   const [prefNotif, setPrefNotif] = useState(profile.pref_notif);
   const [prefDaily, setPrefDaily] = useState(profile.pref_daily);
+  const [prefWeekly, setPrefWeekly] = useState(profile.pref_weekly);
   const [routineDeadline, setRoutineDeadline] = useState(profile.routine_deadline ?? "21:00");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -72,6 +74,7 @@ export function SettingsForm({ profile }: { profile: Profile }) {
         avatar,
         pref_notif: prefNotif,
         pref_daily: prefDaily,
+        pref_weekly: prefWeekly,
         routine_deadline: routineDeadline,
       });
       setSaved(true);
@@ -165,24 +168,31 @@ export function SettingsForm({ profile }: { profile: Profile }) {
         </div>
 
         <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
-          <input type="checkbox" checked={prefDaily} onChange={(e) => setPrefDaily(e.target.checked)} />
-          <span>Récapitulatif quotidien</span>
-        </label>
-        <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
           <input type="checkbox" checked={prefNotif} onChange={(e) => setPrefNotif(e.target.checked)} />
-          <span>Notifications (rappel de routine)</span>
+          <span>Notifications push (interrupteur principal)</span>
         </label>
         {prefNotif && (
-          <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
-            <input
-              type="time"
-              className="auth-input"
-              style={{ width: 130 }}
-              value={routineDeadline}
-              onChange={(e) => setRoutineDeadline(e.target.value)}
-            />
-            <span className="card-sub">Heure limite du rappel si la routine du jour n’est pas terminée</span>
-          </label>
+          <>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, marginLeft: 26 }}>
+              <input type="checkbox" checked={prefDaily} onChange={(e) => setPrefDaily(e.target.checked)} />
+              <span className="card-sub">Rappel quotidien — quêtes du jour</span>
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, marginLeft: 26 }}>
+              <input type="checkbox" checked={prefWeekly} onChange={(e) => setPrefWeekly(e.target.checked)} />
+              <span className="card-sub">Rappel hebdomadaire — voir le récap</span>
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
+              <input
+                type="time"
+                className="auth-input"
+                style={{ width: 130 }}
+                value={routineDeadline}
+                onChange={(e) => setRoutineDeadline(e.target.value)}
+              />
+              <span className="card-sub">Heure limite du rappel en app si la routine du jour n’est pas terminée</span>
+            </label>
+            <PushToggle />
+          </>
         )}
 
         {saved && <p style={{ color: "var(--success)", fontSize: 14 }}>Enregistré ✓</p>}

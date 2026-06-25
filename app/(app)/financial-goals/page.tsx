@@ -8,7 +8,7 @@ export default async function FinancialGoalsPage() {
   const goals = await financialGoalsService.list(user!.id);
   return (
     <div className="page section active">
-      <PageHead title="Objectifs financiers" sub="Tes objectifs d’épargne et ta progression." />
+      <PageHead title="Objectifs financiers" sub="Tes obligations à payer et tes objectifs d’épargne." />
       <FinancialGoalsManager initialGoals={goals} />
     </div>
   );

@@ -1,8 +1,9 @@
 import Link from "next/link";
 import { getCurrentUser, createClient } from "@/lib/supabase/server";
 import { PageHead } from "@/components/ui/page-head";
-import { clamp, money, percentage, todayISO } from "@/lib/utils";
+import { clamp, money, percentage, todayISO, daysUntil } from "@/lib/utils";
 import { DashboardCheckList } from "@/components/features/dashboard-check-list";
+import { DashboardRoutineTabs } from "@/components/features/dashboard-routine-tabs";
 import type { Danger, FinanceEntry, FinancialGoal, Memento, Objective, Project, Quest, Routine, Task } from "@/types";
 
 // Small styled link that mirrors the prototype's "Gérer →" button.
@@ -60,26 +61,29 @@ export default async function DashboardPage() {
   const dangerRows = (dangers.data ?? []) as Danger[];
 
   // ----- Routine + tasks (daily) -----
-  const routineTotalMin = routineRows.reduce((s, r) => s + (r.minutes || 1), 0);
-  const routineDoneMin = routineRows.filter((r) => r.done).reduce((s, r) => s + (r.minutes || 1), 0);
-  const routinePct = percentage(routineDoneMin, routineTotalMin);
+  const dailyRoutines = routineRows.filter((r) => (r.frequency ?? "daily") === "daily");
+  const weeklyRoutines = routineRows.filter((r) => r.frequency === "weekly");
+  const monthlyRoutines = routineRows.filter((r) => r.frequency === "monthly");
+  const otherRoutines = [...weeklyRoutines, ...monthlyRoutines];
+  const routineDone = dailyRoutines.filter((r) => r.done).length;
+  const routineTotal = dailyRoutines.length;
+  const routinePct = percentage(routineDone, routineTotal);
 
   const taskDoneMin = taskRows.filter((t) => t.done).reduce((s, t) => s + Number(t.minutes || 0), 0);
   const taskTotalMin = taskRows.reduce((s, t) => s + Number(t.minutes || 0), 0);
-  const dayDoneMin = taskDoneMin + routineDoneMin;
-  const dayTotalMin = taskTotalMin + routineTotalMin;
 
   // ----- Quests -----
   const questsDone = questRows.filter((q) => q.done).length;
   const questsPct = percentage(questsDone, questRows.length);
 
-  // ----- Finance (current month) — recurring expenses count every month -----
+  // ----- Finance (current month) — recurring entries count every month -----
   const oneOff = financeRows.filter((e) => !e.recurring);
-  const recurringExpenses = financeRows.filter((e) => e.recurring);
+  const rec = financeRows.filter((e) => e.recurring);
   const monthOneOff = oneOff.filter((e) => e.entry_date.slice(0, 7) === thisMonth);
   const monthExpenses = monthOneOff.filter((e) => e.type === "expense");
-  const income = monthOneOff.filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
-  const recurringSpent = recurringExpenses.reduce((s, e) => s + Number(e.amount), 0);
+  const recurringIncome = rec.filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
+  const income = monthOneOff.filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0) + recurringIncome;
+  const recurringSpent = rec.filter((e) => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
   const spent = monthExpenses.reduce((s, e) => s + Number(e.amount), 0) + recurringSpent;
   const net = income - spent;
 
@@ -102,11 +106,31 @@ export default async function DashboardPage() {
           <ManageLink href="/memento" />
         </div>
         {mementoRows.length ? (
-          mementoRows.map((m) => (
-            <div className="memento-item" key={m.id}>
-              <div className="memento-quote">{m.name}</div>
-            </div>
-          ))
+          <>
+            {/* Échéances first — smaller text + countdown by end date */}
+            {mementoRows
+              .filter((m) => m.expires_at)
+              .sort((a, b) => (a.expires_at ?? "").localeCompare(b.expires_at ?? ""))
+              .map((m) => {
+                const d = daysUntil(m.expires_at!);
+                const label = d < 0 ? `Expiré (il y a ${-d} j)` : d === 0 ? "Aujourd’hui !" : d === 1 ? "Demain" : `J-${d}`;
+                const color = d <= 0 ? "var(--danger)" : d <= 7 ? "var(--warn)" : "var(--cyan-soft)";
+                return (
+                  <div className="memento-item" key={m.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                    <span style={{ fontSize: 13 }}>⏳ {m.name}</span>
+                    <span style={{ fontSize: 12, fontWeight: 600, color }}>{label}</span>
+                  </div>
+                );
+              })}
+            {/* Principles — the bigger "citations" */}
+            {mementoRows
+              .filter((m) => !m.expires_at)
+              .map((m) => (
+                <div className="memento-item" key={m.id}>
+                  <div className="memento-quote">{m.name}</div>
+                </div>
+              ))}
+          </>
         ) : (
           <Empty icon="📝" text="Aucun memento." href="/memento" />
         )}
@@ -157,19 +181,19 @@ export default async function DashboardPage() {
         <div className="card">
           <div className="card-head">
             <div>
-              <h3 className="card-title">🔁 Routine</h3>
+              <h3 className="card-title">🗓️ Quêtes quotidiennes</h3>
               <p className="card-sub">
-                Progression : <strong>{routinePct}%</strong> · {routineDoneMin} min / {routineTotalMin} min
+                Progression : <strong>{routinePct}%</strong> · {routineDone}/{routineTotal} faites
               </p>
             </div>
             <ManageLink href="/routine" />
           </div>
           <div className="big-bar"><div className="big-bar-fill" style={{ width: `${routinePct}%` }} /></div>
           <div style={{ marginTop: 12 }}>
-            {routineRows.length ? (
-              <DashboardCheckList resource="routines" items={routineRows} withMinutes />
+            {dailyRoutines.length ? (
+              <DashboardCheckList resource="routines" items={dailyRoutines} />
             ) : (
-              <Empty icon="🔁" text="Aucune routine." href="/routine" />
+              <Empty icon="🗓️" text="Aucune quête quotidienne." href="/routine" />
             )}
           </div>
         </div>
@@ -178,11 +202,11 @@ export default async function DashboardPage() {
           <div className="card-head">
             <div>
               <h3 className="card-title">⏱️ Tâches du jour</h3>
-              <p className="card-sub">{dayDoneMin} min / {dayTotalMin} min</p>
+              <p className="card-sub">{taskDoneMin} min / {taskTotalMin} min</p>
             </div>
             <ManageLink href="/tasks" />
           </div>
-          <div className="big-bar"><div className="big-bar-fill" style={{ width: `${percentage(dayDoneMin, dayTotalMin)}%` }} /></div>
+          <div className="big-bar"><div className="big-bar-fill" style={{ width: `${percentage(taskDoneMin, taskTotalMin)}%` }} /></div>
           <div style={{ marginTop: 12 }}>
             {taskRows.length ? (
               <DashboardCheckList resource="tasks" items={taskRows} withMinutes />
@@ -192,6 +216,21 @@ export default async function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {otherRoutines.length > 0 && (
+        <div className="card" style={{ marginBottom: 16 }}>
+          <div className="card-head">
+            <div>
+              <h3 className="card-title">📅 Quêtes hebdo &amp; mensuelles</h3>
+              <p className="card-sub">{otherRoutines.filter((r) => r.done).length}/{otherRoutines.length} faites</p>
+            </div>
+            <ManageLink href="/routine" />
+          </div>
+          <div style={{ marginTop: 12 }}>
+            <DashboardRoutineTabs weekly={weeklyRoutines} monthly={monthlyRoutines} />
+          </div>
+        </div>
+      )}
 
       {/* ===== Objectifs du mois ===== */}
       <div className="card" style={{ marginBottom: 16 }}>
@@ -273,25 +312,24 @@ export default async function DashboardPage() {
           </div>
           <ManageLink href="/finance" />
         </div>
-        <h3 className="card-title" style={{ marginBottom: 12 }}>Dernières dépenses</h3>
-        {monthExpenses.length ? (
-          <>
-            {monthExpenses.slice(0, 6).map((e) => (
-              <div className="row" key={e.id}>
-                <div className="row-left">
-                  <span className="row-name">{e.name}</span>
-                  <span className="cat-tag">{e.category || "Autre"}</span>
-                </div>
-                <strong className="money-negative">{money(e.amount)}</strong>
-              </div>
-            ))}
-            {monthExpenses.length > 6 ? (
-              <p className="card-sub" style={{ marginTop: 8 }}>+ {monthExpenses.length - 6} autres dépenses dans la rubrique Budget.</p>
-            ) : null}
-          </>
-        ) : (
-          <Empty icon="💰" text="Aucune dépense ponctuelle ce mois-ci." href="/finance" />
-        )}
+        <div
+          style={{
+            textAlign: "center",
+            padding: "14px 12px",
+            borderRadius: 14,
+            border: `2px solid ${net >= 0 ? "var(--success)" : "var(--danger)"}`,
+            boxShadow: `0 0 22px ${net >= 0 ? "rgba(107,255,176,0.14)" : "rgba(255,90,110,0.14)"}`,
+          }}
+        >
+          <div className="card-sub">Résultat du mois · revenus − dépenses</div>
+          <div className={net >= 0 ? "money-positive" : "money-negative"} style={{ fontSize: 34, fontWeight: 800, margin: "2px 0" }}>
+            {money(net)}
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", gap: 18, flexWrap: "wrap" }}>
+            <span className="card-sub">Revenus <strong className="money-positive">{money(income)}</strong></span>
+            <span className="card-sub">Dépenses <strong className="money-negative">{money(spent)}</strong></span>
+          </div>
+        </div>
       </div>
 
       {/* ===== Dangers ===== */}

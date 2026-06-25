@@ -4,6 +4,8 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SortableList } from "@/components/ui/sortable-list";
+import { persistPositions } from "@/lib/reorder";
 import { formatDayLabel } from "@/lib/utils";
 import type { Reflection } from "@/types";
 
@@ -24,14 +26,20 @@ export function ReflectionsManager({ initialItems }: { initialItems: Reflection[
     [items]
   );
 
-  // Pinned first, then most recent.
+  // Pinned first, then by manual position (drag order).
   const sorted = useMemo(() => {
     const list = filter ? items.filter((i) => i.topic === filter) : items;
     return [...list].sort((a, b) => {
       if (a.pinned !== b.pinned) return a.pinned ? -1 : 1;
-      return (b.created_at ?? "").localeCompare(a.created_at ?? "");
+      return (a.position ?? 0) - (b.position ?? 0);
     });
   }, [items, filter]);
+
+  function reorder(ordered: Reflection[]) {
+    const pos = new Map(ordered.map((r, i) => [r.id, i]));
+    setItems((prev) => prev.map((r) => (pos.has(r.id) ? { ...r, position: pos.get(r.id)! } : r)));
+    persistPositions("reflections", ordered);
+  }
 
   async function add(e: React.FormEvent) {
     e.preventDefault();
@@ -43,8 +51,9 @@ export function ReflectionsManager({ initialItems }: { initialItems: Reflection[
         title: title.trim(),
         topic: topic.trim() || "Général",
         body: body.trim(),
+        position: items.length,
       });
-      setItems((prev) => [created, ...prev]);
+      setItems((prev) => [...prev, created]);
       setTitle("");
       setTopic("");
       setBody("");
@@ -119,9 +128,9 @@ export function ReflectionsManager({ initialItems }: { initialItems: Reflection[
       {sorted.length === 0 ? (
         <EmptyState icon="🪞">Aucune réflexion. Note un sujet qui te trotte dans la tête.</EmptyState>
       ) : (
-        <div style={{ display: "grid", gap: 12 }}>
-          {sorted.map((r) => (
-            <div className="card" key={r.id} style={{ borderLeft: r.pinned ? "3px solid var(--accent)" : undefined }}>
+        <SortableList items={sorted} onReorder={reorder} gap={12}>
+          {(r) => (
+            <div className="card" style={{ borderLeft: r.pinned ? "3px solid var(--cyan)" : undefined }}>
               {editId === r.id ? (
                 <div style={{ display: "grid", gap: 8 }}>
                   <input className="auth-input" value={draft.title} onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))} placeholder="Titre" />
@@ -149,8 +158,8 @@ export function ReflectionsManager({ initialItems }: { initialItems: Reflection[
                 </>
               )}
             </div>
-          ))}
-        </div>
+          )}
+        </SortableList>
       )}
     </div>
   );

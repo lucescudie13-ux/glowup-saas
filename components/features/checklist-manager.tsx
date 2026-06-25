@@ -45,13 +45,26 @@ interface TabGroups {
   layout?: "tabs" | "sections"; // tabs = switch between; sections = all visible + drag between
 }
 
+interface EditDraft {
+  name: string;
+  minutes: string;
+  category: string;
+}
+
 interface RowProps {
   item: Item;
   withMinutes: boolean;
   withCategory: boolean;
+  categoryOptions?: { group: string; options: string[] }[];
   togglable: boolean;
   onToggle: (item: Item) => void;
   onRemove: (item: Item) => void;
+  editingId: string | null;
+  editDraft: EditDraft;
+  setEditDraft: React.Dispatch<React.SetStateAction<EditDraft>>;
+  onStartEdit: (item: Item) => void;
+  onSaveEdit: () => void;
+  onCancelEdit: () => void;
 }
 
 interface ChecklistManagerProps {
@@ -59,6 +72,8 @@ interface ChecklistManagerProps {
   initialItems: Item[];
   withMinutes?: boolean;
   withCategory?: boolean;
+  /** When provided (with withCategory), the category field is a grouped dropdown instead of free text. */
+  categoryOptions?: { group: string; options: string[] }[];
   togglable?: boolean;
   reorderable?: boolean;
   groups?: TabGroups;
@@ -67,7 +82,58 @@ interface ChecklistManagerProps {
   addLabel?: string;
 }
 
-function RowInner({ item, withMinutes, withCategory, togglable, onToggle, onRemove }: RowProps) {
+function RowInner({
+  item,
+  withMinutes,
+  withCategory,
+  categoryOptions,
+  togglable,
+  onToggle,
+  onRemove,
+  editingId,
+  editDraft,
+  setEditDraft,
+  onStartEdit,
+  onSaveEdit,
+  onCancelEdit,
+}: RowProps) {
+  if (editingId === item.id) {
+    return (
+      <div className="task-body" style={{ display: "grid", gap: 6, width: "100%" }}>
+        <input
+          className="auth-input"
+          autoFocus
+          value={editDraft.name}
+          onChange={(e) => setEditDraft((d) => ({ ...d, name: e.target.value }))}
+          onKeyDown={(e) => { if (e.key === "Enter") onSaveEdit(); if (e.key === "Escape") onCancelEdit(); }}
+          placeholder="Nom"
+        />
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
+          {withMinutes && (
+            <input className="auth-input" type="number" min={1} style={{ width: 90 }} placeholder="min"
+              value={editDraft.minutes} onChange={(e) => setEditDraft((d) => ({ ...d, minutes: e.target.value }))} />
+          )}
+          {withCategory && categoryOptions ? (
+            <select className="auth-input" style={{ flex: "1 1 150px" }} value={editDraft.category}
+              onChange={(e) => setEditDraft((d) => ({ ...d, category: e.target.value }))}>
+              <option value="">Catégorie…</option>
+              {categoryOptions.map((g) => (
+                <optgroup key={g.group} label={g.group}>
+                  {g.options.map((o) => <option key={o} value={o}>{o}</option>)}
+                </optgroup>
+              ))}
+              <option value="Autres">Autres</option>
+            </select>
+          ) : withCategory ? (
+            <input className="auth-input" style={{ flex: "1 1 120px" }} placeholder="Catégorie"
+              value={editDraft.category} onChange={(e) => setEditDraft((d) => ({ ...d, category: e.target.value }))} />
+          ) : null}
+          <button type="button" className="checklist-submit" onClick={onSaveEdit}>OK</button>
+          <button type="button" className="secondary-btn" onClick={onCancelEdit}>Annuler</button>
+        </div>
+      </div>
+    );
+  }
   return (
     <>
       {togglable && (
@@ -91,6 +157,9 @@ function RowInner({ item, withMinutes, withCategory, togglable, onToggle, onRemo
           </div>
         )}
       </div>
+      <button type="button" className="task-del" onClick={() => onStartEdit(item)} aria-label="Modifier" title="Modifier">
+        ✏️
+      </button>
       <button type="button" className="task-del" onClick={() => onRemove(item)} aria-label="Supprimer" title="Supprimer">
         ✕
       </button>
@@ -141,6 +210,7 @@ export function ChecklistManager({
   initialItems,
   withMinutes = false,
   withCategory = false,
+  categoryOptions,
   togglable = true,
   reorderable = false,
   groups,
@@ -157,6 +227,8 @@ export function ChecklistManager({
   const [busy, setBusy] = useState(false);
   const [activeTab, setActiveTab] = useState(groups?.tabs[0]?.value ?? "");
   const [addGroup, setAddGroup] = useState(groups?.tabs[0]?.value ?? "");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState<EditDraft>({ name: "", minutes: "", category: "" });
 
   const sections = groups?.layout === "sections";
 
@@ -235,6 +307,31 @@ export function ChecklistManager({
       router.refresh();
     } catch (err) {
       setItems(snapshot);
+      setError(err instanceof Error ? err.message : "Erreur.");
+    }
+  }
+
+  function startEdit(item: Item) {
+    setEditingId(item.id);
+    setEditDraft({ name: item.name, minutes: String(item.minutes ?? ""), category: item.category ?? "" });
+  }
+  function cancelEdit() {
+    setEditingId(null);
+  }
+  async function saveEdit() {
+    const item = items.find((i) => i.id === editingId);
+    if (!item) return;
+    const name = editDraft.name.trim();
+    if (!name) return;
+    const patch: Record<string, unknown> = { name };
+    if (withMinutes) patch.minutes = Number(editDraft.minutes || 0);
+    if (withCategory) patch.category = editDraft.category || undefined;
+    setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, ...patch } : i))); // optimistic
+    setEditingId(null);
+    try {
+      await api.patch(`/api/${resource}/${item.id}`, patch);
+      router.refresh();
+    } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur.");
     }
   }
@@ -328,7 +425,12 @@ export function ChecklistManager({
     }
   }
 
-  const rowProps = { withMinutes, withCategory, togglable, onToggle: toggle, onRemove: remove };
+  const rowProps = {
+    withMinutes, withCategory, categoryOptions, togglable,
+    onToggle: toggle, onRemove: remove,
+    editingId, editDraft, setEditDraft,
+    onStartEdit: startEdit, onSaveEdit: saveEdit, onCancelEdit: cancelEdit,
+  };
 
   return (
     <div className="card">
@@ -347,9 +449,19 @@ export function ChecklistManager({
         {withMinutes && (
           <input className="auth-input" style={{ flex: "0 1 100px" }} type="number" min={1} placeholder="min" value={minutes} onChange={(e) => setMinutes(e.target.value)} />
         )}
-        {withCategory && (
+        {withCategory && categoryOptions ? (
+          <select className="auth-input" style={{ flex: "1 1 160px" }} value={category} onChange={(e) => setCategory(e.target.value)}>
+            <option value="">Catégorie…</option>
+            {categoryOptions.map((g) => (
+              <optgroup key={g.group} label={g.group}>
+                {g.options.map((o) => <option key={o} value={o}>{o}</option>)}
+              </optgroup>
+            ))}
+            <option value="Autres">Autres</option>
+          </select>
+        ) : withCategory ? (
           <input className="auth-input" style={{ flex: "1 1 140px" }} placeholder="Catégorie" value={category} onChange={(e) => setCategory(e.target.value)} />
-        )}
+        ) : null}
         {sections && groups && (
           <select className="auth-input" style={{ flex: "0 1 140px" }} value={addGroup} onChange={(e) => setAddGroup(e.target.value)}>
             {groups.tabs.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}

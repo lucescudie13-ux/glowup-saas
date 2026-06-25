@@ -18,7 +18,7 @@ async function ensureDisciplineKey(userId: string): Promise<string> {
   const stats = (await statsService.list(userId)) as Stat[];
   const found = stats.find((s) => s.key === DISCIPLINE_KEY || s.name.toLowerCase() === "discipline");
   if (found) return found.key;
-  const created = await statsService.createCustom(userId, { name: "Discipline", value: 50 });
+  const created = await statsService.createCustom(userId, { name: "Discipline", value: 50, category: "mental" });
   return created.key;
 }
 

@@ -20,6 +20,7 @@ export type SleepEntry = Tables<"sleep_entries">;
 export type Reflection = Tables<"reflections">;
 export type Measurement = Tables<"measurements">;
 export type ProgressPhoto = Tables<"progress_photos">;
+export type PushSubscriptionRow = Tables<"push_subscriptions">;
 
 export type ObjectivePeriod = "monthly" | "yearly";
 export type FinanceType = "income" | "expense";
@@ -27,6 +28,7 @@ export type WorkoutType = "strength" | "run" | "boxing";
 export type TasksMode = "classic" | "eisenhower" | "kanban";
 export type TaskStatus = "todo" | "doing" | "done";
 export type PhotoPose = "front" | "back" | "side";
+export type StatCategory = "physique" | "mental" | "personnel" | "energie";
 
 /** deltas map: { statKey: number } */
 export type Deltas = Record<string, number>;

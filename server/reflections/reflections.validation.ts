@@ -5,6 +5,7 @@ export const createReflectionSchema = z.object({
   body: z.string().trim().default(""),
   topic: z.string().trim().min(1).default("Général"),
   pinned: z.boolean().optional(),
+  position: z.coerce.number().int().min(0).optional(),
 });
 
 export const updateReflectionSchema = z.object({
@@ -12,6 +13,7 @@ export const updateReflectionSchema = z.object({
   body: z.string().trim().optional(),
   topic: z.string().trim().min(1).optional(),
   pinned: z.boolean().optional(),
+  position: z.coerce.number().int().min(0).optional(),
 });
 
 export type CreateReflectionInput = z.infer<typeof createReflectionSchema>;

@@ -4,6 +4,8 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { EmptyState } from "@/components/ui/empty-state";
+import { SortableList } from "@/components/ui/sortable-list";
+import { persistPositions } from "@/lib/reorder";
 import type { Project } from "@/types";
 
 export function ProjectsManager({ initialItems }: { initialItems: Project[] }) {
@@ -22,7 +24,7 @@ export function ProjectsManager({ initialItems }: { initialItems: Project[] }) {
     if (!name.trim()) return;
     setBusy(true);
     try {
-      const created = await api.post<Project>("/api/projects", { name, description });
+      const created = await api.post<Project>("/api/projects", { name, description, position: items.length });
       setItems((prev) => [...prev, created]);
       setName("");
       setDescription("");
@@ -30,6 +32,11 @@ export function ProjectsManager({ initialItems }: { initialItems: Project[] }) {
     } finally {
       setBusy(false);
     }
+  }
+
+  function reorder(ordered: Project[]) {
+    setItems(ordered);
+    persistPositions("projects", ordered);
   }
 
   function startEdit(p: Project) {
@@ -94,9 +101,9 @@ export function ProjectsManager({ initialItems }: { initialItems: Project[] }) {
       {items.length === 0 ? (
         <EmptyState icon="🚀">Aucun projet en cours.</EmptyState>
       ) : (
-        <div style={{ display: "grid", gap: 14 }}>
-          {items.map((p) => (
-            <div className="objective" key={p.id}>
+        <SortableList items={items} onReorder={reorder} gap={14}>
+          {(p) => (
+            <div className="objective">
               {editingId === p.id ? (
                 <div style={{ display: "grid", gap: 10 }}>
                   <input className="auth-input" value={editName} onChange={(e) => setEditName(e.target.value)} placeholder="Nom du projet" />
@@ -141,8 +148,8 @@ export function ProjectsManager({ initialItems }: { initialItems: Project[] }) {
                 </>
               )}
             </div>
-          ))}
-        </div>
+          )}
+        </SortableList>
       )}
     </div>
   );

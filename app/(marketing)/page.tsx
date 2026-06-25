@@ -1,7 +1,8 @@
 import Link from "next/link";
+import { Logo } from "@/components/ui/logo";
 
 const FEATURES = [
-  { icon: "📊", title: "Statistiques de vie", text: "8 caractéristiques qui montent et descendent selon tes actions réelles." },
+  { icon: "📊", title: "Statistiques de vie", text: "Des caractéristiques par catégorie qui montent et descendent selon tes actions réelles." },
   { icon: "⚔️", title: "Quêtes & routines", text: "Coche tes habitudes et tes quêtes, fais avancer tes jauges." },
   { icon: "🎯", title: "Objectifs & projets", text: "Objectifs du mois et de l’année, projets suivis point par point." },
   { icon: "💰", title: "Finance & nutrition", text: "Suis ton argent, tes calories et tes macros au quotidien." },
@@ -10,9 +11,9 @@ const FEATURES = [
 export default function LandingPage() {
   return (
     <main className="landing">
-      <p style={{ color: "var(--cyan-soft)", letterSpacing: 1, fontSize: 13, marginBottom: 12 }}>
-        GLOW UP RPG
-      </p>
+      <div style={{ marginBottom: 20 }}>
+        <Logo size={52} />
+      </div>
       <h1>Transforme ta vie réelle en jeu de rôle.</h1>
       <p className="lede">
         Enregistre tes actions, fais monter tes statistiques, accomplis tes quêtes et

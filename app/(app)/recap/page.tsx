@@ -64,8 +64,10 @@ export default async function RecapPage() {
   const month = today.slice(0, 7);
   const fin = financeRes.data ?? [];
   const monthEntries = fin.filter((e) => e.entry_date.slice(0, 7) === month && !e.recurring);
-  const recurringSpent = fin.filter((e) => e.recurring).reduce((s, e) => s + Number(e.amount), 0);
-  const income = monthEntries.filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
+  const rec = fin.filter((e) => e.recurring);
+  const recurringSpent = rec.filter((e) => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0);
+  const recurringIncome = rec.filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0);
+  const income = monthEntries.filter((e) => e.type === "income").reduce((s, e) => s + Number(e.amount), 0) + recurringIncome;
   const spent = monthEntries.filter((e) => e.type === "expense").reduce((s, e) => s + Number(e.amount), 0) + recurringSpent;
   const net = income - spent;
 

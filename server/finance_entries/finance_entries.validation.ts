@@ -8,6 +8,7 @@ export const createFinanceEntrySchema = z.object({
   entry_date: z.string().date().optional(),
   recurring: z.coerce.boolean().optional(),
   planned: z.coerce.boolean().optional(),
+  position: z.coerce.number().int().min(0).optional(),
 });
 export const updateFinanceEntrySchema = z.object({
   name: z.string().trim().min(1).optional(),
@@ -16,6 +17,7 @@ export const updateFinanceEntrySchema = z.object({
   entry_date: z.string().date().optional(),
   recurring: z.coerce.boolean().optional(),
   planned: z.coerce.boolean().optional(),
+  position: z.coerce.number().int().min(0).optional(),
 });
 export type CreateFinanceEntryInput = z.infer<typeof createFinanceEntrySchema>;
 export type UpdateFinanceEntryInput = z.infer<typeof updateFinanceEntrySchema>;

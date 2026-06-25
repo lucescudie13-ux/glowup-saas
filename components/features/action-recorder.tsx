@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
-import { ACTION_PRESETS } from "@/lib/constants";
-import { actionXp } from "@/lib/utils";
+import { STAT_CATEGORIES, ENERGY_CATEGORY } from "@/lib/constants";
 import type { Stat } from "@/types";
 
 interface RecordResult {
@@ -27,13 +26,6 @@ export function ActionRecorder({ stats }: { stats: Stat[] }) {
 
   function setDelta(key: string, value: number) {
     setDeltas((prev) => ({ ...prev, [key]: value }));
-  }
-
-  function applyPreset(presetKey: string) {
-    const preset = ACTION_PRESETS[presetKey];
-    if (!preset) return;
-    setName(preset.name);
-    setDeltas({ ...preset.deltas });
   }
 
   async function submit(e: React.FormEvent) {
@@ -67,19 +59,7 @@ export function ActionRecorder({ stats }: { stats: Stat[] }) {
     <div className="card">
       <div className="card-head">
         <h2 className="card-title">⚡ Enregistrer une action</h2>
-        <span className="card-sub">Fais bouger tes statistiques</span>
-      </div>
-
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-        {Object.entries(ACTION_PRESETS).map(([p, preset]) => {
-          const xp = actionXp(preset.deltas);
-          return (
-            <button key={p} type="button" className="secondary-btn" onClick={() => applyPreset(p)}>
-              {p}
-              {xp > 0 && <span style={{ color: "var(--cyan-soft)", marginLeft: 6 }}>+{xp} XP</span>}
-            </button>
-          );
-        })}
+        <span className="card-sub">Nomme ton action et ajuste les stats concernées</span>
       </div>
 
       <form onSubmit={submit}>
@@ -91,19 +71,30 @@ export function ActionRecorder({ stats }: { stats: Stat[] }) {
           style={{ marginBottom: 14 }}
         />
 
-        <div className="delta-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>
-          {stats.map((s) => (
-            <label key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-              <span style={{ color: "var(--muted)", fontSize: 14 }}>{s.name}</span>
-              <input
-                type="number"
-                className="auth-input"
-                style={{ width: 80, padding: "6px 8px" }}
-                value={deltas[s.key] ?? 0}
-                onChange={(e) => setDelta(s.key, Number(e.target.value))}
-              />
-            </label>
-          ))}
+        <div style={{ display: "grid", gap: 14 }}>
+          {[...STAT_CATEGORIES, ENERGY_CATEGORY].map((cat) => {
+            const group = stats.filter((s) => s.category === cat.key);
+            if (group.length === 0) return null;
+            return (
+              <div key={cat.key}>
+                <div className="card-sub" style={{ marginBottom: 6 }}>{cat.icon} {cat.label}</div>
+                <div className="delta-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>
+                  {group.map((s) => (
+                    <label key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                      <span style={{ color: "var(--muted)", fontSize: 14 }}>{s.name}</span>
+                      <input
+                        type="number"
+                        className="auth-input"
+                        style={{ width: 80, padding: "6px 8px" }}
+                        value={deltas[s.key] ?? 0}
+                        onChange={(e) => setDelta(s.key, Number(e.target.value))}
+                      />
+                    </label>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
 
         {error && <p className="auth-error">{error}</p>}

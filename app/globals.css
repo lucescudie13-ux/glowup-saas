@@ -2617,3 +2617,82 @@ html[data-theme="light"] .section-drop.is-over { background: rgba(8, 145, 178, 0
   .level-hero-top { flex-wrap: wrap; }
   .level-hero-xp-num { order: 3; }
 }
+
+/* ===== Cosmetic rewards (frames + badges) ===== */
+.cosmetic-frame { padding: 2px; }
+.cosmetic-frame.frame-bronze  { box-shadow: 0 0 0 3px #cd7f32, 0 0 10px rgba(205,127,50,0.5); }
+.cosmetic-frame.frame-silver  { box-shadow: 0 0 0 3px #c0c0c0, 0 0 10px rgba(192,192,192,0.55); }
+.cosmetic-frame.frame-gold    { box-shadow: 0 0 0 3px #ffd700, 0 0 14px rgba(255,215,0,0.6); }
+.cosmetic-frame.frame-diamond { box-shadow: 0 0 0 3px #7ef9ff, 0 0 16px rgba(126,249,255,0.75); }
+.cosmetic-badge {
+  position: absolute; right: -4px; bottom: -4px;
+  font-size: 18px; line-height: 1;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.5));
+}
+
+/* =====================================================================
+   AIRY REFRESH — plus d'air, surfaces plus douces, typo plus lisible.
+   Couche finale (gagne la cascade). Garde l'identité cyan/sombre.
+   ===================================================================== */
+:root {
+  --space-1: 6px;
+  --space-2: 10px;
+  --space-3: 16px;
+  --space-4: 22px;
+  --space-5: 30px;
+  --space-6: 40px;
+  --space-page: clamp(20px, 2.6vw, 38px);
+  --radius-lg: 24px;
+  --radius-md: 16px;
+  --radius-sm: 12px;
+  --line-soft: rgba(0, 245, 255, 0.12);
+}
+
+body { line-height: 1.55; }
+
+/* Pages : plus d'air vertical + rythme entre les blocs */
+.page { padding: var(--space-page) var(--space-page) 80px; }
+.page-head { margin-bottom: var(--space-5); }
+.page-title { letter-spacing: -0.8px; }
+
+/* Cartes : plus douces, plus aérées */
+.card {
+  border-radius: var(--radius-lg);
+  border-color: var(--line-soft);
+  padding: clamp(18px, 2vw, 26px);
+  box-shadow: 0 1px 0 rgba(255,255,255,0.02), 0 18px 40px rgba(0,0,0,0.28);
+}
+.card:hover { border-color: var(--line); }
+.card-head { margin-bottom: var(--space-3); gap: var(--space-3); }
+.card-title { font-size: 18px; letter-spacing: -0.3px; }
+.card-sub { line-height: 1.5; }
+
+/* Grilles : un peu plus d'espace */
+.grid { gap: clamp(16px, 1.6vw, 22px); }
+.grid-stats { gap: clamp(16px, 1.6vw, 22px); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
+.kpi { border-radius: var(--radius-md); border-color: var(--line-soft); padding: 20px; }
+
+/* Lignes de liste : respiration */
+.task-item { padding: 12px 14px; border-radius: 14px; }
+.task-item + .task-item { margin-top: 8px; }
+.row { padding: 12px 4px; }
+.objective { padding: 4px 2px; }
+
+/* Champs & boutons : plus grands, plus doux, focus visible */
+.auth-input {
+  min-height: 46px;
+  border-radius: var(--radius-md);
+  border-color: var(--line-soft);
+  transition: border-color .15s, box-shadow .15s;
+}
+.auth-input:focus {
+  outline: none;
+  border-color: var(--line-strong);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+textarea.auth-input { min-height: auto; }
+.main-btn, .secondary-btn, .checklist-submit {
+  min-height: 44px;
+  border-radius: var(--radius-md);
+}
+.main-btn { letter-spacing: 0.2px; }
