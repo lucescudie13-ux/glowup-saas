@@ -40,12 +40,12 @@ export default async function CharacterPage() {
   const avg = catAvgs.length ? Math.round(catAvgs.reduce((a, b) => a + b, 0) / catAvgs.length) : 0;
   const { level } = levelFromXp(profile?.xp ?? 0);
 
-  // Category gauges shown in the hero fiche (couleurs : physique/mental/perso/énergie).
+  // Fixed category gauges shown in the hero (énergie is a live gauge, not here).
   const heroCategories = [
     { label: "Physique", value: categoryAverage(stats, "physique"), color: "#e5484d" },
     { label: "Mental", value: categoryAverage(stats, "mental"), color: "#3e63dd" },
     { label: "Personnel", value: categoryAverage(stats, "personnel"), color: "#8e4ec6" },
-    { label: "Énergie", value: categoryAverage(stats, "energie"), color: "#f5a623" },
+    { label: "Social", value: categoryAverage(stats, "social"), color: "#30a46c" },
   ];
 
   const questsDone = (quests.data ?? []).filter((q) => q.done).length;

@@ -31,6 +31,7 @@ const CONTAINER_PREFIX = "container::";
 interface Item {
   id: string;
   name: string;
+  description?: string;
   done?: boolean;
   category?: string;
   minutes?: number;
@@ -47,14 +48,17 @@ interface TabGroups {
 
 interface EditDraft {
   name: string;
+  description: string;
   minutes: string;
   category: string;
 }
 
 interface RowProps {
   item: Item;
+  editMode: boolean;
   withMinutes: boolean;
   withCategory: boolean;
+  withDescription: boolean;
   categoryOptions?: { group: string; options: string[] }[];
   togglable: boolean;
   onToggle: (item: Item) => void;
@@ -72,6 +76,8 @@ interface ChecklistManagerProps {
   initialItems: Item[];
   withMinutes?: boolean;
   withCategory?: boolean;
+  /** Adds an optional free-text description to each item (shown under its name). */
+  withDescription?: boolean;
   /** When provided (with withCategory), the category field is a grouped dropdown instead of free text. */
   categoryOptions?: { group: string; options: string[] }[];
   togglable?: boolean;
@@ -84,8 +90,10 @@ interface ChecklistManagerProps {
 
 function RowInner({
   item,
+  editMode,
   withMinutes,
   withCategory,
+  withDescription,
   categoryOptions,
   togglable,
   onToggle,
@@ -108,6 +116,16 @@ function RowInner({
           onKeyDown={(e) => { if (e.key === "Enter") onSaveEdit(); if (e.key === "Escape") onCancelEdit(); }}
           placeholder="Nom"
         />
+        {withDescription && (
+          <textarea
+            className="auth-input"
+            rows={2}
+            value={editDraft.description}
+            onChange={(e) => setEditDraft((d) => ({ ...d, description: e.target.value }))}
+            onKeyDown={(e) => { if (e.key === "Escape") onCancelEdit(); }}
+            placeholder="Description (facultative)…"
+          />
+        )}
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {withMinutes && (
             <input className="auth-input" type="number" min={1} style={{ width: 90 }} placeholder="min"
@@ -150,6 +168,7 @@ function RowInner({
       )}
       <div className="task-body">
         <span className="task-name">{item.name}</span>
+        {withDescription && item.description ? <span className="task-desc">{item.description}</span> : null}
         {((withMinutes && item.minutes) || (withCategory && item.category)) && (
           <div className="task-meta">
             {withMinutes && item.minutes ? <span className="task-mins">⏱️ {item.minutes} min</span> : null}
@@ -157,24 +176,30 @@ function RowInner({
           </div>
         )}
       </div>
-      <button type="button" className="task-del" onClick={() => onStartEdit(item)} aria-label="Modifier" title="Modifier">
-        ✏️
-      </button>
-      <button type="button" className="task-del" onClick={() => onRemove(item)} aria-label="Supprimer" title="Supprimer">
-        ✕
-      </button>
+      {editMode && (
+        <>
+          <button type="button" className="task-del" onClick={() => onStartEdit(item)} aria-label="Modifier" title="Modifier">
+            ✏️
+          </button>
+          <button type="button" className="task-del" onClick={() => onRemove(item)} aria-label="Supprimer" title="Supprimer">
+            ✕
+          </button>
+        </>
+      )}
     </>
   );
 }
 
 function SortableRow(props: RowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.item.id });
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.item.id, disabled: !props.editMode });
   const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 5 : undefined };
   return (
     <li ref={setNodeRef} style={style} className={`task-item${props.item.done ? " is-done" : ""}${isDragging ? " is-dragging" : ""}`}>
-      <button type="button" className="task-grip" aria-label="Glisser pour réordonner" title="Glisser pour réordonner" {...attributes} {...listeners}>
-        ⠿
-      </button>
+      {props.editMode && (
+        <button type="button" className="task-grip" aria-label="Glisser pour réordonner" title="Glisser pour réordonner" {...attributes} {...listeners}>
+          ⠿
+        </button>
+      )}
       <RowInner {...props} />
     </li>
   );
@@ -210,6 +235,7 @@ export function ChecklistManager({
   initialItems,
   withMinutes = false,
   withCategory = false,
+  withDescription = false,
   categoryOptions,
   togglable = true,
   reorderable = false,
@@ -221,6 +247,7 @@ export function ChecklistManager({
   const router = useRouter();
   const [items, setItems] = useState<Item[]>(initialItems);
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [minutes, setMinutes] = useState("");
   const [category, setCategory] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -228,7 +255,8 @@ export function ChecklistManager({
   const [activeTab, setActiveTab] = useState(groups?.tabs[0]?.value ?? "");
   const [addGroup, setAddGroup] = useState(groups?.tabs[0]?.value ?? "");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState<EditDraft>({ name: "", minutes: "", category: "" });
+  const [editDraft, setEditDraft] = useState<EditDraft>({ name: "", description: "", minutes: "", category: "" });
+  const [editMode, setEditMode] = useState(false);
 
   const sections = groups?.layout === "sections";
 
@@ -268,6 +296,7 @@ export function ChecklistManager({
     setError(null);
     try {
       const payload: Record<string, unknown> = { name };
+      if (withDescription && description.trim()) payload.description = description.trim();
       if (withMinutes) payload.minutes = Number(minutes || 1);
       if (withCategory && category) payload.category = category;
       if (groups) payload[groups.field] = groupTarget;
@@ -275,6 +304,7 @@ export function ChecklistManager({
       const created = await api.post<Item>(`/api/${resource}`, payload);
       setItems((prev) => [...prev, created]);
       setName("");
+      setDescription("");
       setMinutes("");
       setCategory("");
       router.refresh();
@@ -313,7 +343,7 @@ export function ChecklistManager({
 
   function startEdit(item: Item) {
     setEditingId(item.id);
-    setEditDraft({ name: item.name, minutes: String(item.minutes ?? ""), category: item.category ?? "" });
+    setEditDraft({ name: item.name, description: item.description ?? "", minutes: String(item.minutes ?? ""), category: item.category ?? "" });
   }
   function cancelEdit() {
     setEditingId(null);
@@ -324,6 +354,7 @@ export function ChecklistManager({
     const name = editDraft.name.trim();
     if (!name) return;
     const patch: Record<string, unknown> = { name };
+    if (withDescription) patch.description = editDraft.description.trim();
     if (withMinutes) patch.minutes = Number(editDraft.minutes || 0);
     if (withCategory) patch.category = editDraft.category || undefined;
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, ...patch } : i))); // optimistic
@@ -426,7 +457,8 @@ export function ChecklistManager({
   }
 
   const rowProps = {
-    withMinutes, withCategory, categoryOptions, togglable,
+    editMode,
+    withMinutes, withCategory, withDescription, categoryOptions, togglable,
     onToggle: toggle, onRemove: remove,
     editingId, editDraft, setEditDraft,
     onStartEdit: startEdit, onSaveEdit: saveEdit, onCancelEdit: cancelEdit,
@@ -434,6 +466,19 @@ export function ChecklistManager({
 
   return (
     <div className="card">
+      {items.length > 0 && (
+        <div className="checklist-toolbar">
+          <button
+            type="button"
+            className={`secondary-btn${editMode ? " active" : ""}`}
+            style={{ minHeight: 36 }}
+            onClick={() => { setEditMode((v) => !v); setEditingId(null); }}
+          >
+            {editMode ? "✓ Terminé" : "✏️ Modifier"}
+          </button>
+        </div>
+      )}
+
       {groups && !sections && (
         <div className="section-tabs">
           {groups.tabs.map((t) => (
@@ -468,12 +513,21 @@ export function ChecklistManager({
           </select>
         )}
         <button className="checklist-submit" type="submit" disabled={busy}>{addLabel}</button>
+        {withDescription && (
+          <input
+            className="auth-input"
+            style={{ flex: "1 1 100%" }}
+            placeholder="Description (facultative)…"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        )}
       </form>
 
       {error && <p className="auth-error">{error}</p>}
-      {reorderable && items.length > 1 && (
+      {editMode && reorderable && items.length > 1 && (
         <p className="card-sub" style={{ margin: "0 0 10px" }}>
-          ↕ Glisse une ligne par la poignée{sections ? " (y compris d’une section à l’autre)" : ""} pour réorganiser.
+          ↕ Glisse une ligne par la poignée{sections ? " (y compris d’une section à l’autre)" : ""} pour réorganiser · ✏️ modifie · ✕ supprime.
         </p>
       )}
 

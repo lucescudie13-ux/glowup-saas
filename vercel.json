@@ -1,6 +1,7 @@
 {
   "crons": [
     { "path": "/api/cron/notify?type=daily", "schedule": "0 18 * * *" },
-    { "path": "/api/cron/notify?type=weekly", "schedule": "0 17 * * 0" }
+    { "path": "/api/cron/notify?type=weekly", "schedule": "0 17 * * 0" },
+    { "path": "/api/cron/notify?type=monthly", "schedule": "0 9 1 * *" }
   ]
 }

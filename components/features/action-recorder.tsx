@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { STAT_CATEGORIES, ENERGY_CATEGORY } from "@/lib/constants";
@@ -16,6 +16,18 @@ interface RecordResult {
   leveledUp: boolean;
 }
 
+/** A compact −/value/+ stepper for one stat adjustment. */
+function Stepper({ value, onChange }: { value: number; onChange: (v: number) => void }) {
+  const clamp = (v: number) => Math.max(-20, Math.min(20, v));
+  return (
+    <div className="stepper" role="group">
+      <button type="button" className="stepper-btn" aria-label="Diminuer" onClick={() => onChange(clamp(value - 1))}>−</button>
+      <span className="stepper-val">{value > 0 ? `+${value}` : value}</span>
+      <button type="button" className="stepper-btn" aria-label="Augmenter" onClick={() => onChange(clamp(value + 1))}>+</button>
+    </div>
+  );
+}
+
 export function ActionRecorder({ stats }: { stats: Stat[] }) {
   const router = useRouter();
   const [name, setName] = useState("");
@@ -26,6 +38,14 @@ export function ActionRecorder({ stats }: { stats: Stat[] }) {
 
   function setDelta(key: string, value: number) {
     setDeltas((prev) => ({ ...prev, [key]: value }));
+  }
+
+  const adjusted = useMemo(() => Object.values(deltas).filter((v) => v !== 0).length, [deltas]);
+
+  function reset() {
+    setDeltas({});
+    setFlash(null);
+    setError(null);
   }
 
   async function submit(e: React.FormEvent) {
@@ -58,51 +78,60 @@ export function ActionRecorder({ stats }: { stats: Stat[] }) {
   return (
     <div className="card">
       <div className="card-head">
-        <h2 className="card-title">⚡ Enregistrer une action</h2>
-        <span className="card-sub">Nomme ton action et ajuste les stats concernées</span>
+        <div>
+          <h2 className="card-title">⚡ Enregistrer une action</h2>
+          <span className="card-sub">Nomme ton action, puis ajuste les stats concernées avec − / +.</span>
+        </div>
       </div>
 
       <form onSubmit={submit}>
         <input
           className="auth-input"
-          placeholder="Nom de l’action (ex: Séance de sport)"
+          placeholder="Nom de l’action (ex. Séance de sport)"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          style={{ marginBottom: 14 }}
+          style={{ marginBottom: 16 }}
         />
 
-        <div style={{ display: "grid", gap: 14 }}>
+        <div className="action-cats">
           {[...STAT_CATEGORIES, ENERGY_CATEGORY].map((cat) => {
             const group = stats.filter((s) => s.category === cat.key);
             if (group.length === 0) return null;
             return (
-              <div key={cat.key}>
-                <div className="card-sub" style={{ marginBottom: 6 }}>{cat.icon} {cat.label}</div>
-                <div className="delta-grid" style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10 }}>
-                  {group.map((s) => (
-                    <label key={s.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                      <span style={{ color: "var(--muted)", fontSize: 14 }}>{s.name}</span>
-                      <input
-                        type="number"
-                        className="auth-input"
-                        style={{ width: 80, padding: "6px 8px" }}
-                        value={deltas[s.key] ?? 0}
-                        onChange={(e) => setDelta(s.key, Number(e.target.value))}
-                      />
-                    </label>
-                  ))}
+              <section key={cat.key} className="action-cat">
+                <div className="action-cat-head">{cat.icon} {cat.label}</div>
+                <div className="stepper-grid">
+                  {group.map((s) => {
+                    const v = deltas[s.key] ?? 0;
+                    return (
+                      <div key={s.id} className={`stepper-row${v !== 0 ? " is-active" : ""}`}>
+                        <span className="stepper-name" title={s.name}>{s.name}</span>
+                        <Stepper value={v} onChange={(next) => setDelta(s.key, next)} />
+                      </div>
+                    );
+                  })}
                 </div>
-              </div>
+              </section>
             );
           })}
         </div>
 
-        {error && <p className="auth-error">{error}</p>}
-        {flash && <p style={{ color: "var(--success)", fontSize: 14 }}>{flash}</p>}
+        {error && <p className="auth-error" style={{ marginTop: 12 }}>{error}</p>}
+        {flash && <p style={{ color: "var(--success)", fontSize: 14, marginTop: 12 }}>{flash}</p>}
 
-        <button className="main-btn" type="submit" disabled={busy} style={{ marginTop: 14 }}>
-          {busy ? "Enregistrement…" : "Enregistrer l’action"}
-        </button>
+        <div className="action-footer">
+          <span className="card-sub">
+            {adjusted === 0 ? "Aucune stat ajustée" : `${adjusted} stat${adjusted > 1 ? "s" : ""} ajustée${adjusted > 1 ? "s" : ""}`}
+          </span>
+          <div className="action-footer-btns">
+            {adjusted > 0 && (
+              <button type="button" className="secondary-btn" onClick={reset} disabled={busy}>Réinitialiser</button>
+            )}
+            <button className="main-btn action-submit" type="submit" disabled={busy || !name.trim() || adjusted === 0}>
+              {busy ? "Enregistrement…" : "Enregistrer"}
+            </button>
+          </div>
+        </div>
       </form>
     </div>
   );

@@ -24,6 +24,19 @@ function StatRow({
       </div>
       {editing ? (
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <div className="stepper">
+            <button type="button" className="stepper-btn" aria-label="Diminuer" onClick={() => onChange(s.id, s.value - 1)}>−</button>
+            <input
+              type="number"
+              min={0}
+              max={100}
+              className="stepper-input"
+              aria-label={`Valeur ${s.name}`}
+              value={s.value}
+              onChange={(e) => onChange(s.id, Number(e.target.value))}
+            />
+            <button type="button" className="stepper-btn" aria-label="Augmenter" onClick={() => onChange(s.id, s.value + 1)}>+</button>
+          </div>
           <input
             type="range"
             min={0}
@@ -31,15 +44,6 @@ function StatRow({
             value={s.value}
             onChange={(e) => onChange(s.id, Number(e.target.value))}
             style={{ flex: 1 }}
-          />
-          <input
-            type="number"
-            min={0}
-            max={100}
-            className="auth-input"
-            style={{ width: 70, padding: "4px 6px" }}
-            value={s.value}
-            onChange={(e) => onChange(s.id, Number(e.target.value))}
           />
         </div>
       ) : (

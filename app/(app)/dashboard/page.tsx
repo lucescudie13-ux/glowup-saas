@@ -1,10 +1,16 @@
 import Link from "next/link";
 import { getCurrentUser, createClient } from "@/lib/supabase/server";
 import { PageHead } from "@/components/ui/page-head";
-import { clamp, money, percentage, todayISO, daysUntil } from "@/lib/utils";
+import { money, percentage, todayISO, monthLabel, prevMonthKey, monthlySavingNeeded, formatDayLabel } from "@/lib/utils";
 import { DashboardCheckList } from "@/components/features/dashboard-check-list";
 import { DashboardRoutineTabs } from "@/components/features/dashboard-routine-tabs";
-import type { Danger, FinanceEntry, FinancialGoal, Memento, Objective, Project, Quest, Routine, Task } from "@/types";
+import { DashboardSections, type DashSection } from "@/components/features/dashboard-sections";
+import { DashboardDeadlines } from "@/components/features/dashboard-deadlines";
+import type { Danger, FinanceEntry, FinancialGoal, Memento, MonthlyReport as MonthlyReportRow, Objective, Project, Quest, Routine } from "@/types";
+
+// The month-review prompt shows during the first days of a new month, until the
+// previous month's bilan is written.
+const REVIEW_WINDOW_DAYS = 10;
 
 // Small styled link that mirrors the prototype's "Gérer →" button.
 function ManageLink({ href, children = "Gérer →" }: { href: string; children?: React.ReactNode }) {
@@ -35,11 +41,10 @@ export default async function DashboardPage() {
   const thisMonth = todayISO().slice(0, 7);
 
   // Parallel reads — all owner-scoped + protected by RLS.
-  const [mementos, routines, tasks, monthly, yearly, quests, projects, finance, finGoals, dangers] =
+  const [mementos, routines, monthly, yearly, quests, projects, finance, finGoals, dangers, profile, reports] =
     await Promise.all([
       supabase.from("mementos").select("*").eq("user_id", uid),
       supabase.from("routines").select("*").eq("user_id", uid),
-      supabase.from("tasks").select("*").eq("user_id", uid),
       supabase.from("objectives").select("*").eq("user_id", uid).eq("period", "monthly"),
       supabase.from("objectives").select("*").eq("user_id", uid).eq("period", "yearly"),
       supabase.from("quests").select("*").eq("user_id", uid),
@@ -47,11 +52,12 @@ export default async function DashboardPage() {
       supabase.from("finance_entries").select("*").eq("user_id", uid),
       supabase.from("financial_goals").select("*").eq("user_id", uid),
       supabase.from("dangers").select("*").eq("user_id", uid),
+      supabase.from("profiles").select("dashboard_order").eq("id", uid).maybeSingle(),
+      supabase.from("monthly_reports").select("*").eq("user_id", uid).order("month", { ascending: false }),
     ]);
 
   const mementoRows = (mementos.data ?? []) as Memento[];
   const routineRows = (routines.data ?? []) as Routine[];
-  const taskRows = ((tasks.data ?? []) as Task[]).filter((t) => (t.scope ?? "today") === "today");
   const monthlyRows = (monthly.data ?? []) as Objective[];
   const yearlyRows = (yearly.data ?? []) as Objective[];
   const questRows = (quests.data ?? []) as Quest[];
@@ -59,8 +65,16 @@ export default async function DashboardPage() {
   const financeRows = (finance.data ?? []) as FinanceEntry[];
   const finGoalRows = (finGoals.data ?? []) as FinancialGoal[];
   const dangerRows = (dangers.data ?? []) as Danger[];
+  const dashboardOrder = (profile.data?.dashboard_order ?? []) as string[];
 
-  // ----- Routine + tasks (daily) -----
+  // ----- Monthly report prompt (banner only; the report lives on /bilan) -----
+  const reportRows = (reports.data ?? []) as MonthlyReportRow[];
+  const reviewMonth = prevMonthKey(thisMonth); // the month that just ended
+  const reviewDone = reportRows.some((r) => r.month === reviewMonth && r.review_notes.trim() !== "");
+  const dayOfMonth = Number(todayISO().slice(8, 10));
+  const showReviewBanner = dayOfMonth <= REVIEW_WINDOW_DAYS && !reviewDone;
+
+  // ----- Routine (daily) -----
   const dailyRoutines = routineRows.filter((r) => (r.frequency ?? "daily") === "daily");
   const weeklyRoutines = routineRows.filter((r) => r.frequency === "weekly");
   const monthlyRoutines = routineRows.filter((r) => r.frequency === "monthly");
@@ -68,9 +82,6 @@ export default async function DashboardPage() {
   const routineDone = dailyRoutines.filter((r) => r.done).length;
   const routineTotal = dailyRoutines.length;
   const routinePct = percentage(routineDone, routineTotal);
-
-  const taskDoneMin = taskRows.filter((t) => t.done).reduce((s, t) => s + Number(t.minutes || 0), 0);
-  const taskTotalMin = taskRows.reduce((s, t) => s + Number(t.minutes || 0), 0);
 
   // ----- Quests -----
   const questsDone = questRows.filter((q) => q.done).length;
@@ -87,97 +98,88 @@ export default async function DashboardPage() {
   const spent = monthExpenses.reduce((s, e) => s + Number(e.amount), 0) + recurringSpent;
   const net = income - spent;
 
-  // ----- Financial goals (remaining to save) -----
-  const finGoalsTarget = finGoalRows.reduce((s, g) => s + Number(g.target), 0);
-  const finGoalsSaved = finGoalRows.reduce((s, g) => s + Number(g.saved), 0);
-  const finGoalsRemaining = Math.max(0, finGoalsTarget - finGoalsSaved);
+  // ----- Financial obligations + goals (split by kind) -----
+  const obligations = finGoalRows.filter((g) => g.kind === "obligation");
+  const goals = finGoalRows.filter((g) => (g.kind ?? "goal") === "goal");
+  // Budget simulation: how much to set aside each month to hit every dated
+  // *goal* (not obligation) on time, and what's left of the monthly result after.
+  const goalsMonthlyNeed = goals.reduce(
+    (s, g) => s + monthlySavingNeeded(Math.max(0, Number(g.target) - Number(g.saved)), g.deadline),
+    0,
+  );
+  const netAfterGoals = net - goalsMonthlyNeed;
 
-  return (
-    <div className="page section active">
-      <PageHead title="Tableau de bord" sub="Vue d’ensemble de ta progression personnelle." />
+  // ----- Memento deadlines (échéances), soonest first -----
+  const deadlineMementos = mementoRows
+    .filter((m) => m.expires_at)
+    .sort((a, b) => (a.expires_at ?? "").localeCompare(b.expires_at ?? ""))
+    .map((m) => ({ id: m.id, name: m.name, expires_at: m.expires_at! }));
 
-      {/* ===== Memento ===== */}
-      <div className="card memento-card" style={{ marginBottom: 16 }}>
-        <div className="card-head">
-          <div>
-            <h3 className="card-title">📝 Memento</h3>
-            <p className="card-sub">Rappels importants, motivation, factures ou choses à ne pas oublier.</p>
-          </div>
-          <ManageLink href="/memento" />
-        </div>
-        {mementoRows.length ? (
-          <>
-            {/* Échéances first — smaller text + countdown by end date */}
-            {mementoRows
-              .filter((m) => m.expires_at)
-              .sort((a, b) => (a.expires_at ?? "").localeCompare(b.expires_at ?? ""))
-              .map((m) => {
-                const d = daysUntil(m.expires_at!);
-                const label = d < 0 ? `Expiré (il y a ${-d} j)` : d === 0 ? "Aujourd’hui !" : d === 1 ? "Demain" : `J-${d}`;
-                const color = d <= 0 ? "var(--danger)" : d <= 7 ? "var(--warn)" : "var(--cyan-soft)";
-                return (
-                  <div className="memento-item" key={m.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                    <span style={{ fontSize: 13 }}>⏳ {m.name}</span>
-                    <span style={{ fontSize: 12, fontWeight: 600, color }}>{label}</span>
-                  </div>
-                );
-              })}
-            {/* Principles — the bigger "citations" */}
-            {mementoRows
-              .filter((m) => !m.expires_at)
-              .map((m) => (
-                <div className="memento-item" key={m.id}>
-                  <div className="memento-quote">{m.name}</div>
-                </div>
-              ))}
-          </>
-        ) : (
-          <Empty icon="📝" text="Aucun memento." href="/memento" />
-        )}
-      </div>
-
-      {/* ===== Objectifs financiers ===== */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-head">
-          <div>
-            <h3 className="card-title">🎯 Objectifs financiers</h3>
-            <p className="card-sub">Ta progression d’épargne.</p>
-          </div>
-          <ManageLink href="/financial-goals" />
-        </div>
-        {finGoalRows.length ? (
-          <>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-              <span className="money-neutral" style={{ fontSize: 28, fontWeight: 800 }}>{money(finGoalsRemaining)}</span>
-              <span className="card-sub" style={{ fontSize: 14 }}>restants à épargner · {money(finGoalsSaved)} / {money(finGoalsTarget)}</span>
+  // ----- Reorderable dashboard blocks (order synced to the profile) -----
+  const sections: DashSection[] = [
+    {
+      key: "memento",
+      label: "📝 Memento",
+      node: (
+        <div className="card memento-card">
+          <div className="card-head">
+            <div>
+              <h3 className="card-title">📝 Memento</h3>
+              <p className="card-sub">Rappels importants, motivation, factures ou choses à ne pas oublier.</p>
             </div>
-          </>
-        ) : null}
-        {finGoalRows.length ? (
-          <div className="grid grid-2">
-            {finGoalRows.map((g) => {
-              const pct = percentage(Number(g.saved), Number(g.target));
-              return (
-                <div className="objective" key={g.id}>
-                  <div className="objective-head">
-                    <span className="objective-name">{g.name}</span>
-                    <span className="card-sub">{money(g.saved)} / {money(g.target)}</span>
-                  </div>
-                  <div className="objective-progress-line">
-                    <div className="big-bar"><div className="big-bar-fill" style={{ width: `${pct}%` }} /></div>
-                    <span className="objective-percent">{pct}%</span>
-                  </div>
-                </div>
-              );
-            })}
+            <ManageLink href="/memento" />
           </div>
-        ) : (
-          <Empty icon="🎯" text="Aucun objectif financier." href="/financial-goals" />
-        )}
-      </div>
-
-      {/* ===== Routine + Tâches ===== */}
-      <div className="grid grid-2" style={{ marginBottom: 16 }}>
+          {mementoRows.length ? (
+            <>
+              {/* Échéances — mises en avant avec un compte à rebours vivant */}
+              {deadlineMementos.length > 0 && <DashboardDeadlines items={deadlineMementos} />}
+              {/* Principes / citations — le texte inspirant */}
+              {mementoRows
+                .filter((m) => !m.expires_at)
+                .map((m) => (
+                  <div className="memento-item" key={m.id}>
+                    <div className="memento-quote">{m.name}</div>
+                  </div>
+                ))}
+            </>
+          ) : (
+            <Empty icon="📝" text="Aucun memento." href="/memento" />
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "financial-obligations",
+      label: "📌 Obligations financières",
+      node: (
+        <FinancialCard
+          icon="📌"
+          title="Obligations financières"
+          sub="Ce que tu dois payer — prêt, soutien familial…"
+          items={obligations}
+          emptyIcon="📌"
+          emptyText="Aucune obligation financière."
+        />
+      ),
+    },
+    {
+      key: "financial-goals",
+      label: "🎯 Objectifs financiers",
+      node: (
+        <FinancialCard
+          icon="🎯"
+          title="Objectifs financiers"
+          sub="Ta progression d’épargne."
+          items={goals}
+          emptyIcon="🎯"
+          emptyText="Aucun objectif financier."
+        />
+      ),
+    },
+    {
+      key: "daily-quests",
+      label: "🗓️ Quêtes quotidiennes",
+      node: (
         <div className="card">
           <div className="card-head">
             <div>
@@ -197,172 +199,272 @@ export default async function DashboardPage() {
             )}
           </div>
         </div>
-
+      ),
+    },
+    ...(otherRoutines.length > 0
+      ? [{
+          key: "other-routines",
+          label: "📅 Quêtes hebdo & mensuelles",
+          node: (
+            <div className="card">
+              <div className="card-head">
+                <div>
+                  <h3 className="card-title">📅 Quêtes hebdo &amp; mensuelles</h3>
+                  <p className="card-sub">{otherRoutines.filter((r) => r.done).length}/{otherRoutines.length} faites</p>
+                </div>
+                <ManageLink href="/routine" />
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <DashboardRoutineTabs weekly={weeklyRoutines} monthly={monthlyRoutines} />
+              </div>
+            </div>
+          ),
+        } as DashSection]
+      : []),
+    {
+      key: "monthly-objectives",
+      label: "🎯 Objectifs du mois",
+      node: (
         <div className="card">
           <div className="card-head">
             <div>
-              <h3 className="card-title">⏱️ Tâches du jour</h3>
-              <p className="card-sub">{taskDoneMin} min / {taskTotalMin} min</p>
+              <h3 className="card-title">🎯 Objectifs du mois</h3>
+              <p className="card-sub">Objectif + actions à réaliser</p>
             </div>
-            <ManageLink href="/tasks" />
+            <ManageLink href="/objectives" />
           </div>
-          <div className="big-bar"><div className="big-bar-fill" style={{ width: `${percentage(taskDoneMin, taskTotalMin)}%` }} /></div>
+          {monthlyRows.length ? (
+            monthlyRows.map((o) => <ObjectiveRow key={o.id} item={o} />)
+          ) : (
+            <Empty icon="🎯" text="Aucun objectif du mois." href="/objectives" />
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "yearly-objectives",
+      label: "🗓️ Objectifs de l’année",
+      node: (
+        <div className="card">
+          <div className="card-head">
+            <div>
+              <h3 className="card-title">🗓️ Objectifs de l’année</h3>
+              <p className="card-sub">Objectif + plan d’action annuel</p>
+            </div>
+            <ManageLink href="/objectives" />
+          </div>
+          {yearlyRows.length ? (
+            yearlyRows.map((o) => <ObjectiveRow key={o.id} item={o} />)
+          ) : (
+            <Empty icon="🗓️" text="Aucun objectif de l’année." href="/objectives" />
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "special-quests",
+      label: "⚔️ Quêtes spéciales",
+      node: (
+        <div className="card">
+          <div className="card-head">
+            <div>
+              <h3 className="card-title">⚔️ Quêtes spéciales</h3>
+              <p className="card-sub">Progression : <strong>{questsPct}%</strong></p>
+            </div>
+            <ManageLink href="/quests" />
+          </div>
+          <div className="big-bar"><div className="big-bar-fill" style={{ width: `${questsPct}%` }} /></div>
           <div style={{ marginTop: 12 }}>
-            {taskRows.length ? (
-              <DashboardCheckList resource="tasks" items={taskRows} withMinutes />
+            {questRows.length ? (
+              <DashboardCheckList resource="quests" items={questRows} />
             ) : (
-              <Empty icon="⏱️" text="Aucune tâche." href="/tasks" />
+              <Empty icon="⚔️" text="Aucune quête spéciale." href="/quests" />
             )}
           </div>
         </div>
-      </div>
-
-      {otherRoutines.length > 0 && (
-        <div className="card" style={{ marginBottom: 16 }}>
+      ),
+    },
+    {
+      key: "projects",
+      label: "🚀 Projets en cours",
+      node: (
+        <div className="card">
           <div className="card-head">
             <div>
-              <h3 className="card-title">📅 Quêtes hebdo &amp; mensuelles</h3>
-              <p className="card-sub">{otherRoutines.filter((r) => r.done).length}/{otherRoutines.length} faites</p>
+              <h3 className="card-title">🚀 Projets en cours</h3>
+              <p className="card-sub">Tous tes projets actifs</p>
             </div>
-            <ManageLink href="/routine" />
+            <ManageLink href="/projects" />
           </div>
-          <div style={{ marginTop: 12 }}>
-            <DashboardRoutineTabs weekly={weeklyRoutines} monthly={monthlyRoutines} />
-          </div>
-        </div>
-      )}
-
-      {/* ===== Objectifs du mois ===== */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-head">
-          <div>
-            <h3 className="card-title">🎯 Objectifs du mois</h3>
-            <p className="card-sub">Objectif + actions à réaliser</p>
-          </div>
-          <ManageLink href="/objectives" />
-        </div>
-        {monthlyRows.length ? (
-          monthlyRows.map((o) => <ObjectiveRow key={o.id} item={o} />)
-        ) : (
-          <Empty icon="🎯" text="Aucun objectif du mois." href="/objectives" />
-        )}
-      </div>
-
-      {/* ===== Objectifs de l'année ===== */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-head">
-          <div>
-            <h3 className="card-title">🗓️ Objectifs de l’année</h3>
-            <p className="card-sub">Objectif + plan d’action annuel</p>
-          </div>
-          <ManageLink href="/objectives" />
-        </div>
-        {yearlyRows.length ? (
-          yearlyRows.map((o) => <ObjectiveRow key={o.id} item={o} />)
-        ) : (
-          <Empty icon="🗓️" text="Aucun objectif de l’année." href="/objectives" />
-        )}
-      </div>
-
-      {/* ===== Quêtes spéciales ===== */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-head">
-          <div>
-            <h3 className="card-title">⚔️ Quêtes spéciales</h3>
-            <p className="card-sub">Progression : <strong>{questsPct}%</strong></p>
-          </div>
-          <ManageLink href="/quests" />
-        </div>
-        <div className="big-bar"><div className="big-bar-fill" style={{ width: `${questsPct}%` }} /></div>
-        <div style={{ marginTop: 12 }}>
-          {questRows.length ? (
-            <DashboardCheckList resource="quests" items={questRows} />
+          {projectRows.length ? (
+            projectRows.map((p) => <ObjectiveRow key={p.id} item={{ name: p.name, progress: p.progress }} />)
           ) : (
-            <Empty icon="⚔️" text="Aucune quête spéciale." href="/quests" />
+            <Empty icon="🚀" text="Aucun projet en cours." href="/projects" />
           )}
         </div>
+      ),
+    },
+    {
+      key: "budget",
+      label: "💰 Budget du mois",
+      node: (
+        <div className="card">
+          <div className="card-head">
+            <div>
+              <h3 className="card-title">💰 Budget du mois</h3>
+              <p className="card-sub">
+                Dépenses : <strong>{money(spent)}</strong> (dont {money(recurringSpent)} récurrentes) · Argent gagné : <strong>{money(income)}</strong> · Résultat :{" "}
+                <strong className={net >= 0 ? "money-positive" : "money-negative"}>{money(net)}</strong>
+              </p>
+            </div>
+            <ManageLink href="/finance" />
+          </div>
+          <div className="budget-results">
+            {/* Résultat 1 — dépenses seules */}
+            <div className={`budget-result ${net >= 0 ? "is-pos" : "is-neg"}`}>
+              <div className="card-sub">Résultat du mois · revenus − dépenses</div>
+              <div className={net >= 0 ? "money-positive" : "money-negative"} style={{ fontSize: 32, fontWeight: 800, margin: "2px 0" }}>
+                {money(net)}
+              </div>
+              <div style={{ display: "flex", justifyContent: "center", gap: 16, flexWrap: "wrap" }}>
+                <span className="card-sub">Revenus <strong className="money-positive">{money(income)}</strong></span>
+                <span className="card-sub">Dépenses <strong className="money-negative">{money(spent)}</strong></span>
+              </div>
+            </div>
+
+            {/* Résultat 2 — après l'épargne nécessaire pour les objectifs datés */}
+            {goalsMonthlyNeed > 0 && (
+              <div className={`budget-result ${netAfterGoals >= 0 ? "is-pos" : "is-neg"}`}>
+                <div className="card-sub">Après épargne objectifs · − {money(goalsMonthlyNeed)}/mois</div>
+                <div className={netAfterGoals >= 0 ? "money-positive" : "money-negative"} style={{ fontSize: 32, fontWeight: 800, margin: "2px 0" }}>
+                  {money(netAfterGoals)}
+                </div>
+                <div className="card-sub">
+                  {netAfterGoals >= 0
+                    ? "Il te reste ça après avoir mis de côté pour tes échéances. 🎯"
+                    : "Ton budget ne couvre pas encore l’épargne nécessaire. ⚠️"}
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      ),
+    },
+    {
+      key: "dangers",
+      label: "🧨 Dangers à éviter",
+      node: (
+        <div className="card danger-card">
+          <div className="card-head">
+            <div>
+              <h3 className="card-title">🧨 Dangers à éviter</h3>
+              <p className="card-sub">Actions qui créent de la friction, te tirent vers le bas ou cassent ton flow.</p>
+            </div>
+            <ManageLink href="/dangers" />
+          </div>
+          {dangerRows.length ? (
+            <div className="danger-list">
+              {dangerRows.map((d) => (
+                <div className="danger-row" key={d.id}>
+                  <span className="danger-name">{d.name}</span>
+                  {d.category ? <span className="danger-tag">{d.category}</span> : null}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Empty icon="🧨" text="Aucun danger listé." href="/dangers" />
+          )}
+        </div>
+      ),
+    },
+  ];
+
+  return (
+    <div className="page section active">
+      <PageHead title="Tableau de bord" sub="Vue d’ensemble de ta progression personnelle." />
+
+      {showReviewBanner && (
+        <Link href="/bilan" className="review-banner" aria-label={`Faire le bilan de ${monthLabel(reviewMonth)}`}>
+          <span className="review-banner-icon">📅</span>
+          <span className="review-banner-text">
+            <strong>Nouveau mois — fais le bilan de {monthLabel(reviewMonth)}.</strong>
+            <span className="review-banner-sub">Objectifs atteints ? Note ton throwback et définis tes objectifs du mois.</span>
+          </span>
+          <span className="review-banner-cta">Ouvrir →</span>
+        </Link>
+      )}
+
+      <DashboardSections sections={sections} savedOrder={dashboardOrder} />
+    </div>
+  );
+}
+
+// A financial section (obligations or goals) with per-item deadline + the
+// monthly saving needed to reach each dated item on time.
+function FinancialCard({
+  icon,
+  title,
+  sub,
+  items,
+  emptyIcon,
+  emptyText,
+}: {
+  icon: string;
+  title: string;
+  sub: string;
+  items: FinancialGoal[];
+  emptyIcon: string;
+  emptyText: string;
+}) {
+  const totalTarget = items.reduce((s, g) => s + Number(g.target), 0);
+  const totalSaved = items.reduce((s, g) => s + Number(g.saved), 0);
+  const totalRemaining = Math.max(0, totalTarget - totalSaved);
+
+  return (
+    <div className="card">
+      <div className="card-head">
+        <div>
+          <h3 className="card-title">{icon} {title}</h3>
+          <p className="card-sub">{sub}</p>
+        </div>
+        <ManageLink href="/finance" />
       </div>
-
-      {/* ===== Projets en cours ===== */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-head">
-          <div>
-            <h3 className="card-title">🚀 Projets en cours</h3>
-            <p className="card-sub">Tous tes projets actifs</p>
+      {items.length ? (
+        <>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+            <span className="money-neutral" style={{ fontSize: 28, fontWeight: 800 }}>Restant : {money(totalRemaining)}</span>
+            <span className="card-sub" style={{ fontSize: 14 }}>{money(totalSaved)} / {money(totalTarget)}</span>
           </div>
-          <ManageLink href="/projects" />
-        </div>
-        {projectRows.length ? (
-          projectRows.map((p) => <ObjectiveRow key={p.id} item={{ name: p.name, progress: p.progress }} />)
-        ) : (
-          <Empty icon="🚀" text="Aucun projet en cours." href="/projects" />
-        )}
-      </div>
-
-
-      {/* ===== Budget du mois ===== */}
-      <div className="card" style={{ marginBottom: 16 }}>
-        <div className="card-head">
-          <div>
-            <h3 className="card-title">💰 Budget du mois</h3>
-            <p className="card-sub">
-              Dépenses : <strong>{money(spent)}</strong> (dont {money(recurringSpent)} récurrentes) · Argent gagné : <strong>{money(income)}</strong> · Résultat :{" "}
-              <strong className={net >= 0 ? "money-positive" : "money-negative"}>{money(net)}</strong>
-            </p>
-          </div>
-          <ManageLink href="/finance" />
-        </div>
-        <div
-          style={{
-            textAlign: "center",
-            padding: "14px 12px",
-            borderRadius: 14,
-            border: `2px solid ${net >= 0 ? "var(--success)" : "var(--danger)"}`,
-            boxShadow: `0 0 22px ${net >= 0 ? "rgba(107,255,176,0.14)" : "rgba(255,90,110,0.14)"}`,
-          }}
-        >
-          <div className="card-sub">Résultat du mois · revenus − dépenses</div>
-          <div className={net >= 0 ? "money-positive" : "money-negative"} style={{ fontSize: 34, fontWeight: 800, margin: "2px 0" }}>
-            {money(net)}
-          </div>
-          <div style={{ display: "flex", justifyContent: "center", gap: 18, flexWrap: "wrap" }}>
-            <span className="card-sub">Revenus <strong className="money-positive">{money(income)}</strong></span>
-            <span className="card-sub">Dépenses <strong className="money-negative">{money(spent)}</strong></span>
-          </div>
-        </div>
-      </div>
-
-      {/* ===== Dangers ===== */}
-      <div className="card danger-card" style={{ marginBottom: 16 }}>
-        <div className="card-head">
-          <div>
-            <h3 className="card-title">🧨 Dangers à éviter</h3>
-            <p className="card-sub">Actions qui créent de la friction, te tirent vers le bas ou cassent ton flow.</p>
-          </div>
-          <ManageLink href="/dangers" />
-        </div>
-        {dangerRows.length ? (
           <div className="grid grid-2">
-            {dangerRows.map((d) => {
-              const impact = Number(d.impact || 1);
+            {items.map((g) => {
+              const pct = percentage(Number(g.saved), Number(g.target));
+              const remaining = Math.max(0, Number(g.target) - Number(g.saved));
+              const need = monthlySavingNeeded(remaining, g.deadline);
               return (
-                <div className="danger-item" key={d.id}>
+                <div className="objective" key={g.id}>
+                  {g.image ? <img src={g.image} alt={g.name} className="goal-image-sm" /> : null}
                   <div className="objective-head">
-                    <span className="danger-title">{d.name}</span>
-                    <span className="danger-tag">{d.category || "Autre"}</span>
+                    <span className="objective-name">{g.name}</span>
+                    <span className="card-sub">{money(g.saved)} / {money(g.target)}</span>
                   </div>
                   <div className="objective-progress-line">
-                    <div className="big-bar"><div className="danger-bar-fill" style={{ width: `${clamp(impact * 20)}%` }} /></div>
-                    <span className="objective-percent" style={{ color: "var(--danger-soft)" }}>{impact}/5</span>
+                    <div className="big-bar"><div className="big-bar-fill" style={{ width: `${pct}%` }} /></div>
+                    <span className="objective-percent">{pct}%</span>
                   </div>
+                  {g.deadline && (
+                    <div className="fin-deadline">
+                      🗓️ {formatDayLabel(g.deadline)}
+                      {need > 0 ? <> · <strong>{money(need)}/mois</strong> pour y arriver</> : null}
+                    </div>
+                  )}
                 </div>
               );
             })}
           </div>
-        ) : (
-          <Empty icon="🧨" text="Aucun danger listé." href="/dangers" />
-        )}
-      </div>
+        </>
+      ) : (
+        <Empty icon={emptyIcon} text={emptyText} href="/finance" />
+      )}
     </div>
   );
 }

@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { money } from "@/lib/utils";
 import { EmptyState } from "@/components/ui/empty-state";
+import { InfoHint } from "@/components/ui/info-hint";
 import { SortableList } from "@/components/ui/sortable-list";
 import { persistPositions } from "@/lib/reorder";
 import type { FinanceEntry, FinanceType } from "@/types";
 
 interface Props {
   initialEntries: FinanceEntry[];
+  /** Monthly saving needed to reach every dated financial goal on time. */
+  goalsMonthlyNeed?: number;
 }
 
 /** One recurring section (revenus OR dépenses) — mirror layout. */
@@ -122,7 +125,7 @@ function RecurringSection({
   );
 }
 
-export function FinanceManager({ initialEntries }: Props) {
+export function FinanceManager({ initialEntries, goalsMonthlyNeed = 0 }: Props) {
   const router = useRouter();
   const [entries, setEntries] = useState<FinanceEntry[]>(initialEntries);
 
@@ -132,6 +135,7 @@ export function FinanceManager({ initialEntries }: Props) {
   const incomeTotal = incomes.reduce((s, e) => s + Number(e.amount), 0);
   const expenseTotal = expenses.reduce((s, e) => s + Number(e.amount), 0);
   const net = incomeTotal - expenseTotal;
+  const netAfterGoals = net - goalsMonthlyNeed;
 
   async function addEntry(kind: FinanceType, data: { name: string; amount: number; category: string }) {
     const count = recurring.filter((e) => e.type === kind).length;
@@ -169,25 +173,37 @@ export function FinanceManager({ initialEntries }: Props) {
 
   return (
     <>
-      {/* ===== Résultat mensuel — mis en avant ===== */}
-      <div
-        className="card"
-        style={{
-          marginBottom: 16,
-          textAlign: "center",
-          border: `2px solid ${net >= 0 ? "var(--success)" : "var(--danger)"}`,
-          boxShadow: `0 0 24px ${net >= 0 ? "rgba(107,255,176,0.18)" : "rgba(255,90,110,0.18)"}`,
-        }}
-      >
-        <div className="card-sub">Résultat mensuel · revenus − dépenses</div>
-        <div className={net >= 0 ? "money-positive" : "money-negative"} style={{ fontSize: 38, fontWeight: 800, margin: "4px 0" }}>
-          {money(net)}
+      {/* ===== Résultat mensuel — mis en avant (2 montants) ===== */}
+      <div className="budget-results" style={{ marginBottom: 16 }}>
+        <div className={`budget-result ${net >= 0 ? "is-pos" : "is-neg"}`}>
+          <div className="card-sub">
+            Résultat mensuel <InfoHint text="Tes revenus récurrents moins tes dépenses récurrentes, chaque mois." />
+          </div>
+          <div className={net >= 0 ? "money-positive" : "money-negative"} style={{ fontSize: 36, fontWeight: 800, margin: "4px 0" }}>
+            {money(net)}
+          </div>
+          <div style={{ display: "flex", justifyContent: "center", gap: 18, flexWrap: "wrap" }}>
+            <span className="card-sub">Revenus <strong className="money-positive">{money(incomeTotal)}</strong></span>
+            <span className="card-sub">Dépenses <strong className="money-negative">{money(expenseTotal)}</strong></span>
+            <span className="card-sub">{net >= 0 ? "Surplus 🎉" : "Déficit"}</span>
+          </div>
         </div>
-        <div style={{ display: "flex", justifyContent: "center", gap: 18, flexWrap: "wrap" }}>
-          <span className="card-sub">Revenus <strong className="money-positive">{money(incomeTotal)}</strong></span>
-          <span className="card-sub">Dépenses <strong className="money-negative">{money(expenseTotal)}</strong></span>
-          <span className="card-sub">{net >= 0 ? "Surplus 🎉" : "Déficit"}</span>
-        </div>
+
+        {goalsMonthlyNeed > 0 && (
+          <div className={`budget-result ${netAfterGoals >= 0 ? "is-pos" : "is-neg"}`}>
+            <div className="card-sub">
+              Après épargne objectifs
+              <InfoHint text="Ce qu'il te reste après avoir mis de côté chaque mois le montant nécessaire pour atteindre tes objectifs financiers datés à temps." />
+            </div>
+            <div className={netAfterGoals >= 0 ? "money-positive" : "money-negative"} style={{ fontSize: 36, fontWeight: 800, margin: "4px 0" }}>
+              {money(netAfterGoals)}
+            </div>
+            <div style={{ display: "flex", justifyContent: "center", gap: 18, flexWrap: "wrap" }}>
+              <span className="card-sub">Épargne objectifs <strong className="money-negative">−{money(goalsMonthlyNeed)}/mois</strong></span>
+              <span className="card-sub">{netAfterGoals >= 0 ? "Objectifs finançables ✅" : "Budget insuffisant ⚠️"}</span>
+            </div>
+          </div>
+        )}
       </div>
 
       <RecurringSection

@@ -17,6 +17,7 @@ export function DangersManager({ initialItems }: { initialItems: Danger[] }) {
   const [busy, setBusy] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editDraft, setEditDraft] = useState({ name: "", description: "" });
+  const [editMode, setEditMode] = useState(false);
 
   function startEdit(d: Danger) {
     setEditingId(d.id);
@@ -79,45 +80,58 @@ export function DangersManager({ initialItems }: { initialItems: Danger[] }) {
 
       {error && <p className="auth-error">{error}</p>}
 
+      {items.length > 0 && (
+        <div className="checklist-toolbar">
+          <button
+            type="button"
+            className={`secondary-btn${editMode ? " active" : ""}`}
+            style={{ minHeight: 36 }}
+            onClick={() => { setEditMode((v) => !v); setEditingId(null); }}
+          >
+            {editMode ? "✓ Terminé" : "✏️ Modifier"}
+          </button>
+        </div>
+      )}
+
       {items.length === 0 ? (
         <EmptyState icon="🧨">Aucun danger listé. Identifie ce qui te freine.</EmptyState>
-      ) : (
+      ) : editMode ? (
         <SortableList items={items} onReorder={(o) => { setItems(o); persistPositions("dangers", o); }} gap={10}>
-          {(d) => (
-            <div
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: 10,
-                padding: "12px",
-                borderRadius: 10,
-                borderLeft: "3px solid var(--danger)",
-                background: "rgba(255, 90, 110, 0.06)",
-              }}
-            >
-              {editingId === d.id ? (
-                <div style={{ flex: 1, display: "grid", gap: 6 }}>
-                  <input className="auth-input" value={editDraft.name} onChange={(e) => setEditDraft((s) => ({ ...s, name: e.target.value }))} placeholder="Danger" autoFocus />
-                  <textarea className="auth-input" style={{ minHeight: 56, resize: "vertical" }} value={editDraft.description} onChange={(e) => setEditDraft((s) => ({ ...s, description: e.target.value }))} placeholder="Ce que ça provoque" />
-                  <div style={{ display: "flex", gap: 6 }}>
-                    <button className="checklist-submit" onClick={() => saveEdit(d)}>OK</button>
-                    <button className="secondary-btn" onClick={() => setEditingId(null)}>Annuler</button>
-                  </div>
-                </div>
-              ) : (
-                <>
-                  <div style={{ flex: 1 }}>
-                    <div style={{ fontWeight: 600, color: "var(--danger-soft)" }}>{d.name}</div>
-                    {d.description ? <p className="card-sub" style={{ margin: "4px 0 0", whiteSpace: "pre-wrap" }}>{d.description}</p> : null}
-                  </div>
-                  <button className="secondary-btn" onClick={() => startEdit(d)} aria-label="Modifier" title="Modifier">✏️</button>
-                  <button className="secondary-btn" onClick={() => remove(d.id)} aria-label="Supprimer">✕</button>
-                </>
-              )}
-            </div>
-          )}
+          {(d) => renderDanger(d)}
         </SortableList>
+      ) : (
+        <div style={{ display: "grid", gap: 10 }}>{items.map((d) => renderDanger(d))}</div>
       )}
     </div>
   );
+
+  function renderDanger(d: Danger) {
+    return (
+      <div className="danger-card-row">
+        {editingId === d.id ? (
+          <div style={{ flex: 1, display: "grid", gap: 6 }}>
+            <input className="auth-input" value={editDraft.name} onChange={(e) => setEditDraft((s) => ({ ...s, name: e.target.value }))} placeholder="Danger" autoFocus />
+            <textarea className="auth-input" style={{ minHeight: 56, resize: "vertical" }} value={editDraft.description} onChange={(e) => setEditDraft((s) => ({ ...s, description: e.target.value }))} placeholder="Ce que ça provoque" />
+            <div style={{ display: "flex", gap: 6 }}>
+              <button className="checklist-submit" onClick={() => saveEdit(d)}>OK</button>
+              <button className="secondary-btn" onClick={() => setEditingId(null)}>Annuler</button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div style={{ fontWeight: 600, color: "var(--danger-soft)" }}>{d.name}</div>
+              {d.description ? <p className="card-sub" style={{ margin: "4px 0 0", whiteSpace: "pre-wrap" }}>{d.description}</p> : null}
+            </div>
+            {editMode && (
+              <>
+                <button type="button" className="secondary-btn" onClick={() => startEdit(d)} aria-label="Modifier" title="Modifier">✏️</button>
+                <button type="button" className="secondary-btn" onClick={() => remove(d.id)} aria-label="Supprimer">✕</button>
+              </>
+            )}
+          </>
+        )}
+      </div>
+    );
+  }
 }

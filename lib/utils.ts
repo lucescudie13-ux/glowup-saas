@@ -25,6 +25,21 @@ export function categoryAverage(stats: { value: number; category?: string }[], c
   return statsScore(inCat);
 }
 
+/**
+ * Energy for *today*: starts high in the morning and drains through the day
+ * (unlike the fixed stats). Full at 06:00, nearly empty at 23:00; overnight it
+ * counts as rested. Purely time-based — a living gauge, not a stored stat.
+ */
+export function dayEnergyPercent(now: Date = new Date()): number {
+  const h = now.getHours() + now.getMinutes() / 60;
+  const START = 6;
+  const END = 23;
+  if (h < START) return 100; // overnight / early morning: rested
+  if (h >= END) return 8; // late night: drained
+  const pct = 100 * (1 - (h - START) / (END - START));
+  return Math.round(Math.max(8, Math.min(100, pct)));
+}
+
 /** Whole-day difference from today to an ISO date (negative = past). */
 export function daysUntil(iso: string): number {
   const today = new Date(`${todayISO()}T00:00:00`);
@@ -101,6 +116,36 @@ export function formatDayLabel(iso: string): string {
     day: "numeric",
     month: "short",
   });
+}
+
+/** Whole months remaining until an ISO date (end of that day), at least 1. */
+export function monthsUntil(iso: string): number {
+  const target = new Date(`${iso.slice(0, 10)}T23:59:59`).getTime();
+  const days = (target - Date.now()) / 86_400_000;
+  return Math.max(1, Math.ceil(days / 30.44));
+}
+
+/**
+ * How much to set aside each month to cover `remaining` by `deadline`.
+ * Returns 0 when there's no deadline or nothing left to save.
+ */
+export function monthlySavingNeeded(remaining: number, deadline: string | null | undefined): number {
+  if (!deadline || remaining <= 0) return 0;
+  return Math.ceil(remaining / monthsUntil(deadline));
+}
+
+/** Human label for a 'YYYY-MM' month key, e.g. "juin 2026". */
+export function monthLabel(monthKey: string): string {
+  return new Date(`${monthKey}-01T00:00:00`).toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+}
+
+/** The 'YYYY-MM' key of the month before the given 'YYYY-MM' (pure arithmetic, no TZ). */
+export function prevMonthKey(monthKey: string): string {
+  const parts = monthKey.split("-");
+  let y = Number(parts[0]);
+  let m = Number(parts[1]) - 1;
+  if (m < 1) { m = 12; y -= 1; }
+  return `${y}-${String(m).padStart(2, "0")}`;
 }
 
 export function formatRelative(ts: string | number): string {

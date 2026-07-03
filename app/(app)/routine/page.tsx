@@ -57,6 +57,7 @@ export default async function RoutinePage() {
         resource="routines"
         initialItems={items}
         withCategory
+        withDescription
         categoryOptions={categoryOptions}
         reorderable
         groups={{

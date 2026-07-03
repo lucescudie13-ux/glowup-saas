@@ -27,7 +27,7 @@ export default async function AppLayout({ children }: { children: React.ReactNod
     { label: "Physique", value: categoryAverage(stats, "physique"), color: "#e5484d" },
     { label: "Mental", value: categoryAverage(stats, "mental"), color: "#3e63dd" },
     { label: "Personnel", value: categoryAverage(stats, "personnel"), color: "#8e4ec6" },
-    { label: "Énergie", value: categoryAverage(stats, "energie"), color: "#f5a623" },
+    { label: "Social", value: categoryAverage(stats, "social"), color: "#30a46c" },
   ];
 
   return (

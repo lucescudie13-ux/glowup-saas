@@ -42,6 +42,7 @@ export function SettingsForm({ profile }: { profile: Profile }) {
   const [prefNotif, setPrefNotif] = useState(profile.pref_notif);
   const [prefDaily, setPrefDaily] = useState(profile.pref_daily);
   const [prefWeekly, setPrefWeekly] = useState(profile.pref_weekly);
+  const [prefMonthly, setPrefMonthly] = useState(profile.pref_monthly);
   const [routineDeadline, setRoutineDeadline] = useState(profile.routine_deadline ?? "21:00");
   const [saved, setSaved] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -75,6 +76,7 @@ export function SettingsForm({ profile }: { profile: Profile }) {
         pref_notif: prefNotif,
         pref_daily: prefDaily,
         pref_weekly: prefWeekly,
+        pref_monthly: prefMonthly,
         routine_deadline: routineDeadline,
       });
       setSaved(true);
@@ -180,6 +182,10 @@ export function SettingsForm({ profile }: { profile: Profile }) {
             <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, marginLeft: 26 }}>
               <input type="checkbox" checked={prefWeekly} onChange={(e) => setPrefWeekly(e.target.checked)} />
               <span className="card-sub">Rappel hebdomadaire — voir le récap</span>
+            </label>
+            <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8, marginLeft: 26 }}>
+              <input type="checkbox" checked={prefMonthly} onChange={(e) => setPrefMonthly(e.target.checked)} />
+              <span className="card-sub">Rappel mensuel — faire ton bilan du mois (le 1er)</span>
             </label>
             <label style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 8 }}>
               <input

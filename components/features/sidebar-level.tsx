@@ -2,6 +2,7 @@
 
 import { levelFromXp } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
+import { EnergyGauge } from "@/components/features/energy-gauge";
 import type { CategoryGauge } from "@/components/layout/app-shell";
 import type { Profile } from "@/types";
 
@@ -49,6 +50,10 @@ export function SidebarLevel({ profile, categories }: { profile: Profile; catego
           ))}
         </div>
       )}
+
+      <div style={{ marginTop: 8 }}>
+        <EnergyGauge compact />
+      </div>
     </div>
   );
 }

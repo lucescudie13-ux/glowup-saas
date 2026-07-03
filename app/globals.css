@@ -2655,11 +2655,13 @@ body { line-height: 1.55; }
 .page-head { margin-bottom: var(--space-5); }
 .page-title { letter-spacing: -0.8px; }
 
-/* Cartes : plus douces, plus aérées */
+/* Cartes : plus douces, plus aérées.
+   Padding intérieur généreux pour que le texte ne colle pas au bord
+   (accordé au grand radius de la carte). */
 .card {
   border-radius: var(--radius-lg);
   border-color: var(--line-soft);
-  padding: clamp(18px, 2vw, 26px);
+  padding: clamp(22px, 2.2vw, 30px);
   box-shadow: 0 1px 0 rgba(255,255,255,0.02), 0 18px 40px rgba(0,0,0,0.28);
 }
 .card:hover { border-color: var(--line); }
@@ -2670,13 +2672,14 @@ body { line-height: 1.55; }
 /* Grilles : un peu plus d'espace */
 .grid { gap: clamp(16px, 1.6vw, 22px); }
 .grid-stats { gap: clamp(16px, 1.6vw, 22px); grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); }
-.kpi { border-radius: var(--radius-md); border-color: var(--line-soft); padding: 20px; }
+.kpi { border-radius: var(--radius-md); border-color: var(--line-soft); padding: 22px 24px; }
+.stat { padding: 16px 18px; }
 
-/* Lignes de liste : respiration */
-.task-item { padding: 12px 14px; border-radius: 14px; }
+/* Lignes de liste : respiration (marge horizontale confortable) */
+.task-item { padding: 12px 16px; border-radius: 14px; }
 .task-item + .task-item { margin-top: 8px; }
-.row { padding: 12px 4px; }
-.objective { padding: 4px 2px; }
+.row { padding: 12px 14px; }
+.objective { padding: 8px 12px; }
 
 /* Champs & boutons : plus grands, plus doux, focus visible */
 .auth-input {
@@ -2696,3 +2699,549 @@ textarea.auth-input { min-height: auto; }
   border-radius: var(--radius-md);
 }
 .main-btn { letter-spacing: 0.2px; }
+
+/* =====================================================================
+   Descriptions de tâches / quêtes (sous le nom, discret et lisible)
+   ===================================================================== */
+.task-desc {
+  display: block;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--muted);
+  margin-top: 2px;
+}
+
+/* =====================================================================
+   TABLEAU DE BORD — réorganisation des blocs (drag & drop)
+   ===================================================================== */
+.dash-sections { display: grid; gap: 16px; }
+
+.dash-reorder-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 16px;
+}
+.dash-reorder-toggle { min-height: 40px; }
+.dash-reorder-toggle.active {
+  border-color: var(--cyan-soft);
+  color: var(--cyan-soft);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+.dash-reorder-hint { flex: 1 1 220px; }
+
+.dash-section { position: relative; }
+/* While reordering: a dashed frame makes each movable block obvious. */
+.dash-section.is-editing {
+  outline: 2px dashed var(--line-soft);
+  outline-offset: 4px;
+  border-radius: var(--radius-lg);
+}
+.dash-section.is-dragging { opacity: 0.85; }
+.dash-section.is-dragging .card {
+  border-color: var(--cyan-soft);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.4), 0 0 0 1px var(--cyan-soft);
+}
+
+.dash-drag {
+  position: absolute;
+  top: 10px;
+  right: 12px;
+  z-index: 3;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  font-size: 12.5px;
+  font-weight: 700;
+  color: var(--text);
+  background: var(--surface-2, rgba(0, 245, 255, 0.08));
+  border: 1px solid var(--cyan-soft);
+  border-radius: 999px;
+  cursor: grab;
+  touch-action: none;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.3);
+}
+.dash-drag:active { cursor: grabbing; }
+.dash-drag span { font-size: 15px; line-height: 1; }
+
+/* =====================================================================
+   PERSONNAGE — « Enregistrer une action » : steppers compacts & clairs
+   ===================================================================== */
+.action-cats { display: grid; gap: 16px; }
+.action-cat-head {
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.6px;
+  color: var(--muted);
+  margin-bottom: 8px;
+}
+.stepper-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 8px 12px;
+}
+.stepper-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 7px 12px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: rgba(255, 255, 255, 0.02);
+  transition: border-color 0.15s, background 0.15s;
+}
+.stepper-row.is-active {
+  border-color: var(--line-soft);
+  background: rgba(0, 245, 255, 0.06);
+}
+.stepper-name {
+  font-size: 14px;
+  color: var(--text);
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.stepper {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+  padding: 2px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--line-soft);
+  border-radius: 999px;
+}
+.stepper-btn {
+  width: 30px;
+  height: 30px;
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.stepper-btn:hover { background: rgba(0, 245, 255, 0.14); }
+.stepper-btn:active { background: rgba(0, 245, 255, 0.22); }
+.stepper-val {
+  min-width: 36px;
+  text-align: center;
+  font-weight: 700;
+  font-size: 14px;
+  font-variant-numeric: tabular-nums;
+}
+/* Editable number inside a stepper pill (manual entry) */
+.stepper-input {
+  width: 46px;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-weight: 700;
+  font-size: 14px;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  -moz-appearance: textfield;
+  appearance: textfield;
+}
+.stepper-input:focus { outline: none; }
+.stepper-input::-webkit-outer-spin-button,
+.stepper-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+.stepper-row.is-active .stepper-val { color: var(--cyan-soft); }
+
+.action-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-top: 18px;
+}
+.action-footer-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+.action-submit { min-width: 150px; }
+
+html[data-theme="light"] .stepper-row { background: rgba(8, 145, 178, 0.03); }
+html[data-theme="light"] .stepper-row.is-active { background: rgba(8, 145, 178, 0.08); }
+html[data-theme="light"] .stepper { background: rgba(8, 145, 178, 0.06); }
+html[data-theme="light"] .dash-drag { background: rgba(8, 145, 178, 0.10); }
+
+/* =====================================================================
+   BILAN MENSUEL — section repliable du tableau de bord
+   ===================================================================== */
+.monthly-report .card-head { user-select: none; }
+.mr-chevron {
+  border: none;
+  background: transparent;
+  color: var(--cyan-soft);
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0 2px 0 0;
+}
+.mr-body { display: grid; gap: 18px; margin-top: 4px; }
+.mr-block { display: grid; gap: 2px; }
+.mr-block-title {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  margin-bottom: 4px;
+}
+.mr-block textarea.auth-input { width: 100%; resize: vertical; }
+.mr-quickadd {
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 8px;
+}
+.mr-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+/* The yearly reminder sits on a calmer, inset surface. */
+.mr-year {
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.02);
+}
+.mr-history-toggle {
+  border: none;
+  background: transparent;
+  color: var(--cyan-soft);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 4px 0;
+}
+.mr-history-item {
+  padding: 12px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.02);
+}
+.mr-history-month { font-weight: 700; font-size: 14px; margin-bottom: 4px; }
+.mr-history-notes { font-size: 13px; line-height: 1.5; color: var(--muted); margin-top: 2px; }
+html[data-theme="light"] .mr-year,
+html[data-theme="light"] .mr-history-item { background: rgba(8, 145, 178, 0.04); }
+
+/* =====================================================================
+   BILAN MENSUEL — bannière d'invite en haut du tableau de bord
+   (apparaît en début de mois tant que le bilan du mois passé n'est pas fait)
+   ===================================================================== */
+.review-banner {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  margin-bottom: 16px;
+  padding: 14px 18px;
+  border-radius: var(--radius-lg);
+  text-decoration: none;
+  color: var(--text);
+  border: 1px solid rgba(0, 245, 255, 0.28);
+  background:
+    radial-gradient(circle at left center, rgba(0, 245, 255, 0.14), transparent 60%),
+    linear-gradient(180deg, rgba(12, 20, 31, 0.9), rgba(7, 12, 20, 0.92));
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.25), inset 0 0 0 1px rgba(255, 255, 255, 0.02);
+  transition: border-color 0.15s, transform 0.15s, box-shadow 0.15s;
+}
+.review-banner:hover {
+  border-color: var(--cyan-soft);
+  transform: translateY(-1px);
+  box-shadow: 0 16px 36px rgba(0, 0, 0, 0.3);
+}
+.review-banner-icon { font-size: 24px; line-height: 1; flex-shrink: 0; }
+.review-banner-text { display: grid; gap: 2px; flex: 1; min-width: 0; }
+.review-banner-text strong { font-size: 15px; }
+.review-banner-sub { font-size: 13px; color: var(--muted); }
+.review-banner-cta {
+  flex-shrink: 0;
+  font-weight: 700;
+  font-size: 14px;
+  color: var(--cyan-soft);
+  white-space: nowrap;
+}
+html[data-theme="light"] .review-banner {
+  color: var(--text);
+  border-color: rgba(8, 145, 178, 0.30);
+  background:
+    radial-gradient(circle at left center, rgba(8, 145, 178, 0.10), transparent 60%),
+    linear-gradient(180deg, #eef2f6, #e6ecf2);
+}
+@media (max-width: 560px) {
+  .review-banner-cta { display: none; }
+}
+
+/* =====================================================================
+   ÉCHÉANCES — compte à rebours vivant (jours/heures/minutes/secondes)
+   ===================================================================== */
+.deadline-list { display: grid; gap: 10px; margin-bottom: 8px; }
+.deadline-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(0, 245, 255, 0.22);
+  background:
+    radial-gradient(circle at left, rgba(0, 245, 255, 0.08), transparent 65%),
+    rgba(255, 255, 255, 0.02);
+}
+.deadline-name { font-weight: 700; font-size: 14px; }
+
+.countdown {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+  font-variant-numeric: tabular-nums;
+  font-weight: 800;
+}
+.countdown-seg { display: inline-flex; align-items: baseline; gap: 2px; }
+.countdown-num { font-size: 20px; line-height: 1; }
+.countdown-unit { font-size: 11px; font-weight: 600; opacity: 0.75; }
+.countdown-expired { color: var(--danger); font-weight: 800; }
+html[data-theme="light"] .deadline-row {
+  border-color: rgba(8, 145, 178, 0.25);
+  background: radial-gradient(circle at left, rgba(8, 145, 178, 0.06), transparent 65%), rgba(8, 145, 178, 0.02);
+}
+
+/* Échéance d'un objectif financier (date + épargne mensuelle) */
+.fin-deadline { font-size: 12.5px; color: var(--muted); margin-top: 8px; }
+.fin-deadline strong { color: var(--cyan-soft); }
+
+/* =====================================================================
+   ÉNERGIE DU JOUR — jauge « batterie » vivante (baisse au fil de la journée)
+   ===================================================================== */
+.energy-gauge {
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--line-soft);
+  background: rgba(255, 255, 255, 0.02);
+}
+.energy-gauge-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 6px;
+}
+.energy-gauge-label { font-size: 12px; font-weight: 700; color: var(--text); }
+.energy-gauge-pct { font-size: 13px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.energy-battery {
+  position: relative;
+  height: 14px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--line-soft);
+  overflow: hidden;
+}
+/* Battery "nub" on the right */
+.energy-battery::after {
+  content: "";
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 7px;
+  border-radius: 0 2px 2px 0;
+  background: var(--line-soft);
+}
+.energy-battery-fill {
+  height: 100%;
+  border-radius: 4px;
+  transition: width 0.6s ease, background 0.6s ease;
+  box-shadow: 0 0 12px currentColor;
+}
+.energy-gauge.is-compact { padding: 8px 10px; }
+.energy-gauge.is-compact .energy-gauge-label { font-size: 11px; }
+.energy-gauge.is-compact .energy-battery { height: 11px; }
+html[data-theme="light"] .energy-gauge { background: rgba(8, 145, 178, 0.03); }
+
+/* Photo d'un objectif financier (pour visualiser ce qu'on vise) */
+.goal-image {
+  width: 100%;
+  max-height: 160px;
+  object-fit: cover;
+  border-radius: var(--radius-sm);
+  margin-bottom: 10px;
+  border: 1px solid var(--line-soft);
+}
+.goal-image-sm {
+  width: 100%;
+  max-height: 96px;
+  object-fit: cover;
+  border-radius: 10px;
+  margin-bottom: 8px;
+  border: 1px solid var(--line-soft);
+}
+.goal-image-thumb {
+  width: 46px; height: 46px;
+  object-fit: cover;
+  border-radius: 10px;
+  border: 1px solid var(--line-soft);
+  flex-shrink: 0;
+}
+.goal-photo-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+/* Formulaire d'ajout d'objectif — compact, la photo est un petit bouton */
+.goal-add-form { display: grid; gap: 10px; margin-top: 16px; }
+.goal-add-row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.img-picker-inline { display: inline-flex; align-items: center; gap: 8px; }
+.img-picker-add { cursor: pointer; display: inline-flex; align-items: center; white-space: nowrap; }
+.img-picker-thumb-wrap { cursor: pointer; display: inline-flex; }
+
+/* Ergonomic image picker — a square tile with a "＋" in the middle */
+.sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;
+}
+.img-picker { position: relative; display: inline-block; }
+.img-picker-tile {
+  display: grid;
+  place-items: center;
+  border-radius: var(--radius-md);
+  border: 2px dashed var(--line-strong, rgba(0, 245, 255, 0.4));
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.15s, background 0.15s;
+}
+.img-picker-tile:hover { border-color: var(--cyan-soft); background: rgba(0, 245, 255, 0.06); }
+.img-picker-plus { font-size: 34px; font-weight: 300; color: var(--cyan-soft); line-height: 1; }
+.img-picker-img { width: 100%; height: 100%; object-fit: cover; }
+.img-picker-remove {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  width: 24px;
+  height: 24px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong, rgba(0, 245, 255, 0.4));
+  background: var(--surface-3, #0d1622);
+  color: var(--text);
+  cursor: pointer;
+  font-size: 11px;
+  display: grid;
+  place-items: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+}
+html[data-theme="light"] .img-picker-tile { border-color: rgba(8, 145, 178, 0.4); background: rgba(8, 145, 178, 0.03); }
+html[data-theme="light"] .img-picker-remove { background: #ffffff; color: #11212b; }
+
+/* Contribution rapide (+ montant) en vue normale */
+.fin-addamount { display: flex; gap: 8px; margin-top: 12px; flex-wrap: wrap; }
+/* Ligne en mode édition */
+.fin-edit-row { border: 1px dashed var(--line-soft); border-radius: var(--radius-md); padding: 12px; }
+
+/* État actif d'un bouton secondaire servant d'interrupteur (Modifier/Terminé…) */
+.secondary-btn.active {
+  border-color: var(--cyan-soft);
+  color: var(--cyan-soft);
+  box-shadow: 0 0 0 3px var(--focus);
+}
+
+/* Barre d'outils « Modifier » en haut des listes (tâches, quêtes, routines…) */
+.checklist-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
+
+/* Dangers sur le tableau de bord — simple liste « à ne pas faire » (sans barre) */
+.danger-list { display: grid; gap: 8px; }
+.danger-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border-left: 3px solid var(--danger);
+  background: rgba(255, 90, 110, 0.06);
+}
+.danger-row .danger-name { flex: 1; font-weight: 600; color: var(--danger-soft); min-width: 0; }
+html[data-theme="light"] .danger-row { background: rgba(224, 49, 49, 0.06); }
+
+/* Ligne de danger sur la page Dangers (nom + ce que ça provoque) */
+.danger-card-row {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 10px;
+  border-left: 3px solid var(--danger);
+  background: rgba(255, 90, 110, 0.06);
+}
+html[data-theme="light"] .danger-card-row { background: rgba(224, 49, 49, 0.06); }
+
+/* =====================================================================
+   BUDGET — deux résultats côte à côte (dépenses seules / après épargne)
+   ===================================================================== */
+.budget-results {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 14px;
+}
+.budget-result {
+  text-align: center;
+  padding: 16px 14px;
+  border-radius: var(--radius-md);
+  border: 2px solid var(--line);
+}
+.budget-result.is-pos { border-color: var(--success); box-shadow: 0 0 22px rgba(107, 255, 176, 0.14); }
+.budget-result.is-neg { border-color: var(--danger); box-shadow: 0 0 22px rgba(255, 90, 110, 0.14); }
+
+/* =====================================================================
+   INFO-HINT — badge « ? » avec explication au survol / au tap
+   ===================================================================== */
+.info-hint { position: relative; display: inline-flex; vertical-align: middle; margin-left: 4px; }
+.info-hint-btn {
+  width: 17px;
+  height: 17px;
+  border-radius: 999px;
+  border: 1px solid var(--line-strong, rgba(0, 245, 255, 0.4));
+  background: rgba(0, 245, 255, 0.08);
+  color: var(--cyan-soft);
+  font-size: 11px;
+  font-weight: 800;
+  line-height: 1;
+  cursor: pointer;
+  display: grid;
+  place-items: center;
+  padding: 0;
+}
+.info-hint-btn:hover { background: rgba(0, 245, 255, 0.18); }
+.info-hint-pop {
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 40;
+  width: max-content;
+  max-width: 240px;
+  padding: 9px 11px;
+  border-radius: 10px;
+  background: var(--surface-3, #0d1622);
+  border: 1px solid var(--line-strong, rgba(0, 245, 255, 0.35));
+  color: var(--text);
+  font-size: 12.5px;
+  font-weight: 400;
+  line-height: 1.45;
+  text-align: left;
+  white-space: normal;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.4);
+  opacity: 0;
+  visibility: hidden;
+  transition: opacity 0.12s;
+}
+.info-hint:hover .info-hint-pop,
+.info-hint-pop.is-open { opacity: 1; visibility: visible; }
+html[data-theme="light"] .info-hint-pop { background: #ffffff; color: #11212b; border-color: rgba(8, 145, 178, 0.3); }
+html[data-theme="light"] .info-hint-btn { background: rgba(8, 145, 178, 0.08); border-color: rgba(8, 145, 178, 0.4); }

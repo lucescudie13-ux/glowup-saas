@@ -3,14 +3,14 @@
 export const NAV_ITEMS = [
   { section: "dashboard", icon: "🏠", label: "Tableau de bord" },
   { section: "recap", icon: "📈", label: "Récap hebdo" },
+  { section: "bilan", icon: "📅", label: "Bilan mensuel" },
   { section: "character", icon: "🧍‍♂️", label: "Personnage" },
   { section: "quests", icon: "⚔️", label: "Quêtes spéciales" },
   { section: "routine", icon: "🗓️", label: "Quêtes quotidiennes" },
   { section: "tasks", icon: "⏱️", label: "Tâches" },
   { section: "objectives", icon: "🎯", label: "Objectifs" },
   { section: "projects", icon: "🚀", label: "Projets en cours" },
-  { section: "finance", icon: "💰", label: "Budget" },
-  { section: "financial-goals", icon: "🎯", label: "Objectifs financiers" },
+  { section: "finance", icon: "💰", label: "Finances" },
   { section: "sante", icon: "❤️", label: "Santé" },
   { section: "dangers", icon: "🧨", label: "Dangers" },
   { section: "memento", icon: "📝", label: "Memento" },
@@ -28,6 +28,7 @@ export const STAT_CATEGORIES = [
   { key: "physique", label: "Physique", icon: "💪" },
   { key: "mental", label: "Mental", icon: "🧠" },
   { key: "personnel", label: "Personnel", icon: "🧍" },
+  { key: "social", label: "Social", icon: "🤝" },
 ] as const;
 
 export const ENERGY_CATEGORY = { key: "energie", label: "Énergie", icon: "⚡" } as const;

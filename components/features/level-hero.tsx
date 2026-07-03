@@ -1,6 +1,7 @@
 import { levelFromXp, MAX_LEVEL } from "@/lib/utils";
 import { findCosmetic } from "@/lib/constants";
 import { Avatar } from "@/components/ui/avatar";
+import { EnergyGauge } from "@/components/features/energy-gauge";
 import type { Profile } from "@/types";
 
 /**
@@ -46,7 +47,7 @@ export function LevelHero({
       </div>
 
       {categories && categories.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, margin: "4px 0 14px" }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(120px, 1fr))", gap: 10, margin: "4px 0 12px" }}>
           {categories.map((c) => (
             <div key={c.label}>
               <div style={{ display: "flex", justifyContent: "space-between", fontSize: 12, marginBottom: 3 }}>
@@ -60,6 +61,10 @@ export function LevelHero({
           ))}
         </div>
       )}
+
+      {/* Énergie — jauge vivante, distincte des stats fixes ci-dessus */}
+      <EnergyGauge />
+      <div style={{ height: 12 }} />
 
       <div className="level-xp-bar" title={`${progress}% vers le niveau ${level + 1}`}>
         <div className="level-xp-fill" style={{ width: `${progress}%` }} />

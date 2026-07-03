@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { api } from "@/lib/api-client";
 import { EmptyState } from "@/components/ui/empty-state";
+import { LiveCountdown } from "@/components/features/live-countdown";
 import { daysUntil, formatDayLabel, todayISO } from "@/lib/utils";
 import type { Memento } from "@/types";
 
@@ -134,11 +135,9 @@ export function MementoCountdown({ initialItems }: { initialItems: Memento[] }) 
                     </>
                   ) : (
                     <>
-                      <span style={{ flex: 1 }}>{m.name}</span>
+                      <span style={{ flex: 1, fontWeight: 600 }}>{m.name}</span>
                       {m.expires_at && <span className="card-sub" style={{ fontSize: 12 }}>{formatDayLabel(m.expires_at)}</span>}
-                      {st && (
-                        <span style={{ color: st.color, fontWeight: 600, fontSize: 12, minWidth: 70, textAlign: "right" }}>{st.text}</span>
-                      )}
+                      {m.expires_at && <LiveCountdown expires={m.expires_at} />}
                       <input
                         className="auth-input"
                         type="date"

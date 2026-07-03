@@ -6,9 +6,10 @@ import type { PushSubscription } from "web-push";
 
 /**
  * Scheduled push sender (Vercel Cron). Authorised by the CRON_SECRET bearer
- * token Vercel injects. ?type=daily | weekly.
- *  - daily  → opted-in users who still have incomplete daily quests → /routine
- *  - weekly → opted-in users → /recap
+ * token Vercel injects. ?type=daily | weekly | monthly.
+ *  - daily   → opted-in users who still have incomplete daily quests → /routine
+ *  - weekly  → opted-in users → /recap
+ *  - monthly → opted-in users → /dashboard (bilan mensuel)
  */
 export async function GET(request: NextRequest) {
   const auth = request.headers.get("authorization");
@@ -16,20 +17,25 @@ export async function GET(request: NextRequest) {
     return fail("Unauthorized", 401);
   }
 
-  const type = new URL(request.url).searchParams.get("type") === "weekly" ? "weekly" : "daily";
+  const rawType = new URL(request.url).searchParams.get("type");
+  const type: "daily" | "weekly" | "monthly" =
+    rawType === "weekly" ? "weekly" : rawType === "monthly" ? "monthly" : "daily";
   const admin = createAdminClient();
 
-  const payload: PushPayload =
-    type === "weekly"
-      ? { title: "📈 Ton récap de la semaine", body: "Viens voir ta progression de la semaine.", url: "/recap", tag: "weekly" }
-      : { title: "🗓️ Tes quêtes quotidiennes t'attendent", body: "Termine-les pour garder ta série 🔥", url: "/routine", tag: "daily" };
+  const payloads: Record<typeof type, PushPayload> = {
+    weekly: { title: "📈 Ton récap de la semaine", body: "Viens voir ta progression de la semaine.", url: "/recap", tag: "weekly" },
+    monthly: { title: "📅 Ton bilan mensuel", body: "Fais le point sur ton mois et définis tes objectifs du mois prochain.", url: "/bilan", tag: "monthly" },
+    daily: { title: "🗓️ Tes quêtes quotidiennes t'attendent", body: "Termine-les pour garder ta série 🔥", url: "/routine", tag: "daily" },
+  };
+  const payload = payloads[type];
 
   // Opted-in users (master toggle + the per-type toggle).
   const { data: profiles } = await admin
     .from("profiles")
-    .select("id, pref_notif, pref_daily, pref_weekly");
+    .select("id, pref_notif, pref_daily, pref_weekly, pref_monthly");
+  const perType = { daily: "pref_daily", weekly: "pref_weekly", monthly: "pref_monthly" } as const;
   const eligible = (profiles ?? [])
-    .filter((p) => p.pref_notif && (type === "weekly" ? p.pref_weekly : p.pref_daily))
+    .filter((p) => p.pref_notif && Boolean((p as Record<string, unknown>)[perType[type]]))
     .map((p) => p.id);
 
   let targetIds = eligible;

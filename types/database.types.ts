@@ -33,6 +33,7 @@ export interface Database {
           pref_notif: boolean;
           pref_daily: boolean;
           pref_weekly: boolean;
+          pref_monthly: boolean;
           streak_count: number;
           streak_last_active_day: string | null;
           xp: number;
@@ -45,6 +46,7 @@ export interface Database {
           equipped_frame: string | null;
           equipped_badge: string | null;
           equipped_accent: string | null;
+          dashboard_order: string[];
           created_at: string;
           updated_at: string;
         },
@@ -56,6 +58,7 @@ export interface Database {
           pref_notif?: boolean;
           pref_daily?: boolean;
           pref_weekly?: boolean;
+          pref_monthly?: boolean;
           streak_count?: number;
           streak_last_active_day?: string | null;
           xp?: number;
@@ -68,6 +71,7 @@ export interface Database {
           equipped_frame?: string | null;
           equipped_badge?: string | null;
           equipped_accent?: string | null;
+          dashboard_order?: string[];
         },
         Partial<{
           email: string | null;
@@ -76,6 +80,7 @@ export interface Database {
           pref_notif: boolean;
           pref_daily: boolean;
           pref_weekly: boolean;
+          pref_monthly: boolean;
           streak_count: number;
           streak_last_active_day: string | null;
           xp: number;
@@ -88,12 +93,13 @@ export interface Database {
           equipped_frame: string | null;
           equipped_badge: string | null;
           equipped_accent: string | null;
+          dashboard_order: string[];
         }>
       >;
       stats: Tbl<
-        { id: string; user_id: string; key: string; name: string; value: number; is_custom: boolean; category: "physique" | "mental" | "personnel" | "energie" } & Timestamps,
-        { user_id: string; key: string; name: string; value?: number; is_custom?: boolean; category?: "physique" | "mental" | "personnel" | "energie" },
-        Partial<{ key: string; name: string; value: number; is_custom: boolean; category: "physique" | "mental" | "personnel" | "energie" }>
+        { id: string; user_id: string; key: string; name: string; value: number; is_custom: boolean; category: "physique" | "mental" | "personnel" | "social" | "energie" } & Timestamps,
+        { user_id: string; key: string; name: string; value?: number; is_custom?: boolean; category?: "physique" | "mental" | "personnel" | "social" | "energie" },
+        Partial<{ key: string; name: string; value: number; is_custom: boolean; category: "physique" | "mental" | "personnel" | "social" | "energie" }>
       >;
       actions: Tbl<
         { id: string; user_id: string; name: string; deltas: Json; action_date: string } & Timestamps,
@@ -106,9 +112,9 @@ export interface Database {
         Partial<{ name: string; category: string; done: boolean; position: number }>
       >;
       routines: Tbl<
-        { id: string; user_id: string; name: string; minutes: number; category: string; done: boolean; position: number; frequency: "daily" | "weekly" | "monthly" } & Timestamps,
-        { user_id: string; name: string; minutes?: number; category?: string; done?: boolean; position?: number; frequency?: "daily" | "weekly" | "monthly" },
-        Partial<{ name: string; minutes: number; category: string; done: boolean; position: number; frequency: "daily" | "weekly" | "monthly" }>
+        { id: string; user_id: string; name: string; description: string; minutes: number; category: string; done: boolean; position: number; frequency: "daily" | "weekly" | "monthly" } & Timestamps,
+        { user_id: string; name: string; description?: string; minutes?: number; category?: string; done?: boolean; position?: number; frequency?: "daily" | "weekly" | "monthly" },
+        Partial<{ name: string; description: string; minutes: number; category: string; done: boolean; position: number; frequency: "daily" | "weekly" | "monthly" }>
       >;
       tasks: Tbl<
         { id: string; user_id: string; name: string; minutes: number; category: string; done: boolean; position: number; scope: "today" | "other"; completed_at: string | null; urgent: boolean; important: boolean; status: "todo" | "doing" | "done"; penalized: boolean } & Timestamps,
@@ -131,9 +137,9 @@ export interface Database {
         Partial<{ type: "income" | "expense"; name: string; amount: number; category: string; entry_date: string; recurring: boolean; planned: boolean; position: number }>
       >;
       financial_goals: Tbl<
-        { id: string; user_id: string; name: string; target: number; saved: number; description: string; kind: "goal" | "obligation"; position: number } & Timestamps,
-        { user_id: string; name: string; target: number; saved?: number; description?: string; kind?: "goal" | "obligation"; position?: number },
-        Partial<{ name: string; target: number; saved: number; description: string; kind: "goal" | "obligation"; position: number }>
+        { id: string; user_id: string; name: string; target: number; saved: number; description: string; kind: "goal" | "obligation"; deadline: string | null; image: string; position: number } & Timestamps,
+        { user_id: string; name: string; target: number; saved?: number; description?: string; kind?: "goal" | "obligation"; deadline?: string | null; image?: string; position?: number },
+        Partial<{ name: string; target: number; saved: number; description: string; kind: "goal" | "obligation"; deadline: string | null; image: string; position: number }>
       >;
       nutrition_goals: Tbl<
         { user_id: string; calories: number; protein: number; carbs: number; fat: number; updated_at: string },
@@ -184,6 +190,11 @@ export interface Database {
         { id: string; user_id: string; endpoint: string; subscription: Json } & Timestamps,
         { user_id: string; endpoint: string; subscription: Json },
         Partial<{ endpoint: string; subscription: Json }>
+      >;
+      monthly_reports: Tbl<
+        { id: string; user_id: string; month: string; review_notes: string; next_goals: string; updated_at: string } & Timestamps,
+        { user_id: string; month: string; review_notes?: string; next_goals?: string; updated_at?: string },
+        Partial<{ month: string; review_notes: string; next_goals: string; updated_at: string }>
       >;
     };
     Views: Record<string, never>;

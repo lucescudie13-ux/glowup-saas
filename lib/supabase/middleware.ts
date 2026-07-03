@@ -4,7 +4,9 @@ import type { Database } from "@/types/database.types";
 
 // "/api/cron" is authorised by its own CRON_SECRET bearer token (Vercel Cron
 // calls it with no user session), so it must bypass the auth-redirect gate.
-const PUBLIC_PATHS = ["/", "/login", "/signup", "/auth", "/api/cron"];
+// "/manifest.webmanifest" and "/sw.js" are PWA assets the browser fetches
+// without a session — they must stay publicly reachable for install + push.
+const PUBLIC_PATHS = ["/", "/login", "/signup", "/auth", "/api/cron", "/manifest.webmanifest", "/sw.js"];
 
 function isPublic(pathname: string) {
   return PUBLIC_PATHS.some(

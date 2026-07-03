@@ -25,6 +25,7 @@ import { api } from "@/lib/api-client";
 interface Item {
   id: string;
   name: string;
+  description?: string;
   done?: boolean;
   minutes?: number;
   category?: string;
@@ -236,6 +237,7 @@ function DashRow({
       </button>
       <div className="task-body">
         <span className="task-name">{item.name}</span>
+        {item.description ? <span className="task-desc">{item.description}</span> : null}
         {((withMinutes && item.minutes) || item.category) && (
           <div className="task-meta">
             {withMinutes && item.minutes ? <span className="task-mins">⏱️ {item.minutes} min</span> : null}
