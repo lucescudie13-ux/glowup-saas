@@ -149,7 +149,7 @@ export function MonthlyReport({
           <p className="card-sub">Fais le point sur le mois écoulé et prépare le suivant.</p>
         </div>
         <Link href="/objectives" className="small-btn" style={{ borderRadius: 12, textDecoration: "none", whiteSpace: "nowrap" }} onClick={(e) => e.stopPropagation()}>
-          ✏️ Modifier
+          Gérer →
         </Link>
       </div>
 

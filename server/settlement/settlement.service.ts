@@ -7,7 +7,7 @@ import { createClient } from "@/lib/supabase/server";
 import { statsService } from "@/server/stats/stats.service";
 import { actionsRepository } from "@/server/actions/actions.repository";
 import { userRepository } from "@/server/users/user.repository";
-import { todayISO, currentPeriodStart, type RoutineFrequency } from "@/lib/utils";
+import { todayISO } from "@/lib/utils";
 import type { Stat } from "@/types";
 
 const DISCIPLINE_KEY = "discipline";
@@ -68,36 +68,4 @@ export async function settleDay(userId: string): Promise<number> {
 
   await supabase.from("profiles").update({ last_settled_day: today }).eq("id", userId);
   return n;
-}
-
-/**
- * Resets recurring quests (routines) at the start of each new period: any quest
- * marked done but last completed in a *previous* day/week/month is un-checked so
- * it's due again this period. `completed_at` is kept as the last-completion
- * record (used to flag it red when a period ended without it). Idempotent — only
- * touches stale rows. Never throws to the render path.
- */
-export async function resetRecurringRoutines(userId: string): Promise<number> {
-  const supabase = await createClient();
-  const { data: routines, error } = await supabase
-    .from("routines")
-    .select("id, frequency, completed_at")
-    .eq("user_id", userId)
-    .eq("done", true);
-  if (error || !routines?.length) return 0;
-
-  const now = new Date();
-  const stale = routines.filter((r) => {
-    const freq = ((r.frequency ?? "daily") as RoutineFrequency);
-    const start = currentPeriodStart(now, freq).getTime();
-    return !r.completed_at || new Date(r.completed_at).getTime() < start;
-  });
-  if (!stale.length) return 0;
-
-  await supabase
-    .from("routines")
-    .update({ done: false })
-    .in("id", stale.map((r) => r.id))
-    .eq("user_id", userId);
-  return stale.length;
 }

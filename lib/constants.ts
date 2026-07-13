@@ -5,7 +5,9 @@ export const NAV_ITEMS = [
   { section: "recap", icon: "📈", label: "Récap hebdo" },
   { section: "bilan", icon: "📅", label: "Bilan mensuel" },
   { section: "character", icon: "🧍‍♂️", label: "Personnage" },
-  { section: "journal", icon: "🗺️", label: "Journal de quêtes" },
+  { section: "quests", icon: "⚔️", label: "Quêtes spéciales" },
+  { section: "routine", icon: "🗓️", label: "Quêtes quotidiennes" },
+  { section: "tasks", icon: "⏱️", label: "Tâches" },
   { section: "objectives", icon: "🎯", label: "Objectifs" },
   { section: "projects", icon: "🚀", label: "Projets en cours" },
   { section: "finance", icon: "💰", label: "Finances" },
@@ -17,36 +19,6 @@ export const NAV_ITEMS = [
   { section: "training", icon: "🏋️", label: "Entraînement" },
   { section: "physique", icon: "📸", label: "Physique" },
 ] as const;
-
-
-// ----- « Journal de quêtes » — les 6 sous-points regroupés ---------------
-// Tâches (du jour / autres), quêtes récurrentes (quotidiennes / hebdo /
-// mensuelles) et quêtes spéciales, réunies dans une seule page. Chaque point
-// peut être affiché ou masqué sur le tableau de bord (profiles.dashboard_hub_sections).
-export type HubResource = "tasks" | "routines" | "quests";
-
-export interface HubSection {
-  key: string;
-  label: string;
-  icon: string;
-  resource: HubResource;
-  /** For tasks: which scope this point covers. */
-  scope?: "today" | "other";
-  /** For routines: which frequency this point covers. */
-  frequency?: "daily" | "weekly" | "monthly";
-}
-
-export const HUB_SECTIONS: HubSection[] = [
-  { key: "tasks-today", label: "Tâches du jour", icon: "⏱️", resource: "tasks", scope: "today" },
-  { key: "routine-daily", label: "Quêtes quotidiennes", icon: "🗓️", resource: "routines", frequency: "daily" },
-  { key: "tasks-other", label: "Autres tâches", icon: "📋", resource: "tasks", scope: "other" },
-  { key: "routine-weekly", label: "Quêtes hebdomadaires", icon: "📅", resource: "routines", frequency: "weekly" },
-  { key: "routine-monthly", label: "Quêtes mensuelles", icon: "🌙", resource: "routines", frequency: "monthly" },
-  { key: "quests-special", label: "Quêtes spéciales", icon: "⚔️", resource: "quests" },
-];
-
-/** All hub-section keys, in canonical order — the default (everything shown). */
-export const HUB_SECTION_KEYS = HUB_SECTIONS.map((s) => s.key);
 
 
 // ----- Character stat categories ----------------------------------------

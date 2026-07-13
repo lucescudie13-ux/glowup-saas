@@ -20,7 +20,7 @@
       --cyan-deep: #008cff;
       --text: #e8fbff;
       --muted: #87a5ad;
-      --muted-2: #7d95a0; /* lightened to clear WCAG AA (4.5:1) for small text */
+      --muted-2: #5f7680;
       --danger: #ff5a6e;
       --danger-soft: #ff9aaa;
       --success: #6bffb0;
@@ -31,7 +31,7 @@
     html, body { height: 100%; }
 
     body {
-      font-family: var(--font-body), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif;
       background:
         radial-gradient(circle at top left, rgba(0, 255, 255, 0.10), transparent 35%),
         radial-gradient(circle at bottom right, rgba(0, 120, 255, 0.10), transparent 35%),
@@ -40,23 +40,6 @@
       margin: 0;
       min-height: 100vh;
       overflow-x: hidden;
-    }
-
-    /* ===== Display font (game/RPG HUD look) on titles + big stat numbers =====
-       Everything else stays in the body font so paragraphs and inline text
-       remain ergonomic to read. */
-    .brand-title,
-    .page-title,
-    .card-title,
-    .hero-title,
-    .modal-title,
-    .meal-title,
-    .danger-title,
-    .kpi-value,
-    .objective-name,
-    .stat-value,
-    .nav-section-label {
-      font-family: var(--font-display), var(--font-body), "Segoe UI", sans-serif;
     }
 
     /* ===== Layout ===== */
@@ -99,7 +82,7 @@
       box-shadow: 0 0 24px rgba(0,245,255,0.15);
     }
     .brand-title { font-weight: 700; font-size: 17px; letter-spacing: 0.2px; }
-    .brand-sub { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; }
+    .brand-sub { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1.2px; }
 
     .nav-section-label {
       font-size: 11px;
@@ -250,7 +233,7 @@
       overflow: hidden;
     }
     .user-chip .name { font-size: 13px; font-weight: 600; }
-    .user-chip .lvl { font-size: 12px; color: var(--cyan-soft); }
+    .user-chip .lvl { font-size: 11px; color: var(--cyan-soft); }
 
     /* ===== Page content ===== */
     .page {
@@ -375,7 +358,7 @@
       font-size: 14px;
     }
     .stat-cat {
-      font-size: 12px;
+      font-size: 11px;
       color: var(--muted);
       text-transform: uppercase;
       letter-spacing: 1px;
@@ -513,7 +496,7 @@
     }
 
     .cat-tag {
-      font-size: 12px;
+      font-size: 11px;
       padding: 3px 8px;
       border-radius: 999px;
       background: rgba(0,245,255,0.08);
@@ -547,7 +530,7 @@
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      margin-bottom: 4px;
+      margin-bottom: 10px;
     }
     .objective-name { font-weight: 800; font-size: 15px; color: #ffffff; }
     .objective-actions {
@@ -581,7 +564,7 @@
     .objective-hint {
       display: inline-block;
       margin-top: 8px;
-      font-size: 12px;
+      font-size: 11px;
       color: var(--cyan-soft);
       opacity: 0.82;
     }
@@ -614,8 +597,6 @@
       gap: 10px;
       align-items: center;
     }
-    /* Bar sits right under the title/amount line — drop its own margin. */
-    .objective-progress-line .big-bar { margin: 0; }
     .objective-percent {
       text-align: right;
       color: var(--cyan-soft);
@@ -868,7 +849,7 @@
     }
 
     .danger-tag {
-      font-size: 12px;
+      font-size: 11px;
       padding: 3px 8px;
       border-radius: 999px;
       background: rgba(255,90,110,0.10);
@@ -1254,7 +1235,7 @@
 
     .nav-section-label {
       padding: 16px 10px 7px;
-      font-size: 11px;
+      font-size: 10px;
       color: rgba(135,165,173,0.72);
     }
 
@@ -1382,9 +1363,6 @@
       line-height: 1.45;
       margin-top: 2px;
     }
-    /* Cap card descriptions to a comfortable reading measure (~72 chars).
-       Scoped to card-head so short/centered card-subs elsewhere are untouched. */
-    .card-head .card-sub { max-width: 72ch; }
 
     /* Grilles : plus harmonieuses et moins serrées */
     .grid {
@@ -1582,7 +1560,6 @@
       font-size: 14.5px;
       line-height: 1.6;
       margin-top: 12px;
-      max-width: 72ch;
     }
 
     /* Memento : citation plus respirante */
@@ -1591,7 +1568,7 @@
     }
 
     .memento-quote {
-      max-width: 60ch;
+      max-width: 980px;
       margin: 0 auto;
     }
 
@@ -2099,32 +2076,18 @@ html[data-theme] .kpi {
 .checklist {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 10px;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-/* On wide screens, lay task boxes out in two columns to use the space. */
-@media (min-width: 900px) {
-  .checklist,
-  .section-drop {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 8px 12px;
-    align-items: start;
-  }
-  /* Full-width rows inside the grid (drop hint, empty state). */
-  .checklist > .section-empty,
-  .section-drop > .section-empty { grid-column: 1 / -1; }
-}
-
 .task-item {
   display: flex;
   align-items: center;
-  gap: 11px;
-  padding: 7px 12px;
-  border-radius: 10px;
+  gap: 14px;
+  padding: 12px 14px;
+  border-radius: 14px;
   background:
     radial-gradient(circle at top right, rgba(0, 245, 255, 0.035), transparent 45%),
     var(--surface-2);
@@ -2133,35 +2096,19 @@ html[data-theme] .kpi {
 }
 .task-item:hover {
   border-color: var(--line-strong);
-  transform: none;
+  transform: translateY(-1px);
 }
 .task-item.is-done { opacity: 0.7; }
-
-/* Overdue: not done past its deadline — flagged red like the "Dangers". */
-.task-item.is-overdue {
-  border-color: rgba(255, 90, 110, 0.55);
-  background:
-    radial-gradient(circle at top right, rgba(255, 90, 110, 0.10), transparent 50%),
-    rgba(255, 90, 110, 0.07);
-}
-.task-item.is-overdue:hover { border-color: rgba(255, 90, 110, 0.75); }
-.task-item.is-overdue .task-name { color: var(--danger-soft); }
-.task-item.is-overdue .task-check { border-color: rgba(255, 90, 110, 0.6); }
-html[data-theme="light"] .task-item.is-overdue {
-  border-color: rgba(225, 29, 72, 0.5);
-  background: rgba(225, 29, 72, 0.05);
-}
-html[data-theme="light"] .task-item.is-overdue .task-name { color: #be123c; }
 
 /* Check toggle (a button, so the giant global input styles don't apply) */
 .task-check {
   flex: 0 0 auto;
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   min-height: 0;
   padding: 0;
   margin: 0;
-  border-radius: 7px;
+  border-radius: 9px;
   border: 2px solid var(--line-strong);
   background: transparent;
   color: transparent;
@@ -2186,20 +2133,13 @@ html[data-theme="light"] .task-item.is-overdue .task-name { color: #be123c; }
   min-width: 0;
   display: flex;
   flex-direction: column;
-  gap: 2px;
-}
-.task-title-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  flex-wrap: wrap;
-  min-width: 0;
+  gap: 5px;
 }
 .task-name {
-  font-size: 14.5px;
+  font-size: 15px;
   font-weight: 600;
   color: var(--text);
-  line-height: 1.3;
+  line-height: 1.35;
   overflow-wrap: anywhere;
 }
 .task-item.is-done .task-name { text-decoration: line-through; color: var(--muted); }
@@ -2212,16 +2152,20 @@ html[data-theme="light"] .task-item.is-overdue .task-name { color: #be123c; }
 }
 .task-mins {
   font-size: 11.5px;
-  font-weight: 600;
-  color: var(--muted);
+  font-weight: 700;
+  color: var(--cyan-soft);
+  background: rgba(0, 245, 255, 0.10);
+  border: 1px solid var(--line);
+  padding: 2px 9px;
+  border-radius: 999px;
   white-space: nowrap;
 }
 
 /* Discreet delete (the global .secondary-btn is width:100%) */
 .task-del {
   flex: 0 0 auto;
-  width: 30px;
-  height: 30px;
+  width: 34px;
+  height: 34px;
   min-height: 0;
   padding: 0;
   margin: 0;
@@ -2245,7 +2189,9 @@ html[data-theme="light"] .task-item.is-overdue .task-name { color: #be123c; }
 
 html[data-theme="light"] .task-item:hover { background: rgba(8, 145, 178, 0.06); }
 html[data-theme="light"] .task-mins {
-  color: #5b6b73;
+  background: rgba(8, 145, 178, 0.10);
+  border-color: rgba(8, 145, 178, 0.24);
+  color: #0b5e75;
 }
 html[data-theme="light"] .task-del:hover {
   background: rgba(225, 29, 72, 0.10);
@@ -2729,9 +2675,9 @@ body { line-height: 1.55; }
 .kpi { border-radius: var(--radius-md); border-color: var(--line-soft); padding: 22px 24px; }
 .stat { padding: 16px 18px; }
 
-/* Lignes de liste : compactes pour afficher beaucoup de tâches */
-.task-item { padding: 7px 14px; border-radius: 10px; }
-.task-item + .task-item { margin-top: 0; }
+/* Lignes de liste : respiration (marge horizontale confortable) */
+.task-item { padding: 12px 16px; border-radius: 14px; }
+.task-item + .task-item { margin-top: 8px; }
 .row { padding: 12px 14px; }
 .objective { padding: 8px 12px; }
 
@@ -2763,7 +2709,6 @@ textarea.auth-input { min-height: auto; }
   line-height: 1.45;
   color: var(--muted);
   margin-top: 2px;
-  max-width: 72ch;
 }
 
 /* =====================================================================
@@ -2778,14 +2723,7 @@ textarea.auth-input { min-height: auto; }
   flex-wrap: wrap;
   margin-bottom: 16px;
 }
-.dash-reorder-toggle {
-  min-height: 0;
-  width: auto;
-  flex: 0 0 auto;
-  padding: 8px 16px;
-  font-size: 13px;
-  border-radius: 999px;
-}
+.dash-reorder-toggle { min-height: 40px; }
 .dash-reorder-toggle.active {
   border-color: var(--cyan-soft);
   color: var(--cyan-soft);
@@ -3216,14 +3154,6 @@ html[data-theme="light"] .img-picker-remove { background: #ffffff; color: #11212
 
 /* Barre d'outils « Modifier » en haut des listes (tâches, quêtes, routines…) */
 .checklist-toolbar { display: flex; justify-content: flex-end; margin-bottom: 10px; }
-/* Toolbar toggle: compact pill, not a full-width bar */
-.checklist-toolbar .secondary-btn {
-  width: auto;
-  flex: 0 0 auto;
-  padding: 7px 14px;
-  font-size: 13px;
-  border-radius: 999px;
-}
 
 /* Dangers sur le tableau de bord — simple liste « à ne pas faire » (sans barre) */
 .danger-list { display: grid; gap: 8px; }
@@ -3315,114 +3245,3 @@ html[data-theme="light"] .danger-card-row { background: rgba(224, 49, 49, 0.06);
 .info-hint-pop.is-open { opacity: 1; visibility: visible; }
 html[data-theme="light"] .info-hint-pop { background: #ffffff; color: #11212b; border-color: rgba(8, 145, 178, 0.3); }
 html[data-theme="light"] .info-hint-btn { background: rgba(8, 145, 178, 0.08); border-color: rgba(8, 145, 178, 0.4); }
-
-/* ===== Journal de quêtes (page-hub) ===== */
-.journal-section { margin-top: 30px; }
-.journal-section:first-of-type { margin-top: 22px; }
-.journal-section-title {
-  font-family: var(--font-display), var(--font-body), sans-serif;
-  font-size: 19px;
-  font-weight: 700;
-  color: var(--text-strong);
-  margin: 0 0 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--line);
-}
-
-/* Dashboard-visibility toggles */
-.hub-toggle-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(190px, 1fr));
-  gap: 10px;
-}
-.hub-toggle {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  min-height: 0;
-  text-align: left;
-  padding: 10px 12px;
-  border-radius: var(--radius-sm, 12px);
-  border: 1px solid var(--line);
-  background: var(--surface-2);
-  color: var(--muted);
-  cursor: pointer;
-  transition: border-color 0.15s ease, background 0.15s ease, color 0.15s ease;
-}
-.hub-toggle:hover { border-color: var(--line-strong); }
-.hub-toggle.on {
-  border-color: var(--line-strong);
-  background: rgba(0, 245, 255, 0.08);
-  color: var(--text);
-}
-.hub-toggle-icon { font-size: 18px; flex: 0 0 auto; }
-.hub-toggle-label { flex: 1 1 auto; font-size: 13.5px; font-weight: 600; }
-.hub-toggle-state {
-  flex: 0 0 auto;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 2px 8px;
-  border-radius: 999px;
-  background: rgba(255, 255, 255, 0.04);
-  color: var(--muted-2);
-}
-.hub-toggle.on .hub-toggle-state { background: rgba(0, 245, 255, 0.14); color: var(--cyan-soft); }
-html[data-theme="light"] .hub-toggle.on { background: rgba(8, 145, 178, 0.08); }
-html[data-theme="light"] .hub-toggle.on .hub-toggle-state { background: rgba(8, 145, 178, 0.14); color: #0b5e75; }
-
-/* Dashboard « Journal de quêtes » unified card: one sub-block per shown point */
-.hub-blocks { display: flex; flex-direction: column; gap: 18px; }
-.hub-block + .hub-block { padding-top: 16px; border-top: 1px solid var(--line); }
-
-/* On wide screens, lay the CATEGORIES out two-up (one category per column),
-   and keep each category's task list a single column inside its cell. */
-@media (min-width: 900px) {
-  .hub-blocks {
-    display: grid;
-    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
-    gap: 22px 24px;
-    align-items: start;
-  }
-  .hub-block + .hub-block { padding-top: 0; border-top: none; }
-  .hub-block { min-width: 0; }
-  .hub-block .checklist { display: flex; flex-direction: column; align-items: stretch; gap: 5px; }
-}
-/* Uniform box height across categories so both columns line up: every box is
-   one title line + one meta/description line, clamped so heights match. */
-.hub-block .task-item { min-height: 62px; }
-.hub-block .task-title-row { flex-wrap: nowrap; }
-.hub-block .task-name {
-  flex: 1 1 auto;
-  min-width: 0;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.hub-block .cat-tag { flex: 0 0 auto; }
-.hub-block .task-desc {
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-.hub-block-head {
-  display: flex;
-  align-items: baseline;
-  justify-content: space-between;
-  gap: 10px;
-  margin-bottom: 10px;
-}
-.hub-block-title { font-size: 14px; font-weight: 700; color: var(--text); }
-.hub-block-count {
-  flex: 0 0 auto;
-  font-size: 12px;
-  font-weight: 700;
-  color: var(--cyan-soft);
-  background: rgba(0, 245, 255, 0.10);
-  border: 1px solid var(--line);
-  padding: 1px 9px;
-  border-radius: 999px;
-  white-space: nowrap;
-}
-.hub-block-empty { margin: 0; font-size: 13px; color: var(--muted); }
-html[data-theme="light"] .hub-block-count { background: rgba(8, 145, 178, 0.10); color: #0b5e75; }

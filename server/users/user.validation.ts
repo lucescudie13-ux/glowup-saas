@@ -16,6 +16,5 @@ export const updateProfileSchema = z.object({
   equipped_badge: z.string().trim().min(1).nullable().optional(),
   equipped_accent: z.string().trim().min(1).nullable().optional(),
   dashboard_order: z.array(z.string().trim().min(1)).max(50).optional(),
-  dashboard_hub_sections: z.array(z.string().trim().min(1)).max(20).optional(),
 });
 export type UpdateProfileInput = z.infer<typeof updateProfileSchema>;

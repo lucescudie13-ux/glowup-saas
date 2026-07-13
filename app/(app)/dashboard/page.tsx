@@ -3,17 +3,17 @@ import { getCurrentUser, createClient } from "@/lib/supabase/server";
 import { PageHead } from "@/components/ui/page-head";
 import { money, percentage, todayISO, monthLabel, prevMonthKey, monthlySavingNeeded, formatDayLabel } from "@/lib/utils";
 import { DashboardCheckList } from "@/components/features/dashboard-check-list";
+import { DashboardRoutineTabs } from "@/components/features/dashboard-routine-tabs";
 import { DashboardSections, type DashSection } from "@/components/features/dashboard-sections";
 import { DashboardDeadlines } from "@/components/features/dashboard-deadlines";
-import { HUB_SECTIONS, HUB_SECTION_KEYS, type HubResource } from "@/lib/constants";
-import type { Danger, FinanceEntry, FinancialGoal, Memento, MonthlyReport as MonthlyReportRow, Objective, Project, Quest, Routine, Task } from "@/types";
+import type { Danger, FinanceEntry, FinancialGoal, Memento, MonthlyReport as MonthlyReportRow, Objective, Project, Quest, Routine } from "@/types";
 
 // The month-review prompt shows during the first days of a new month, until the
 // previous month's bilan is written.
 const REVIEW_WINDOW_DAYS = 10;
 
-// Small styled link on each dashboard card; jumps to that section's own page.
-function ManageLink({ href, children = "✏️ Modifier" }: { href: string; children?: React.ReactNode }) {
+// Small styled link that mirrors the prototype's "Gérer →" button.
+function ManageLink({ href, children = "Gérer →" }: { href: string; children?: React.ReactNode }) {
   return (
     <Link
       href={href}
@@ -41,11 +41,10 @@ export default async function DashboardPage() {
   const thisMonth = todayISO().slice(0, 7);
 
   // Parallel reads — all owner-scoped + protected by RLS.
-  const [mementos, routines, tasks, monthly, yearly, quests, projects, finance, finGoals, dangers, profile, reports] =
+  const [mementos, routines, monthly, yearly, quests, projects, finance, finGoals, dangers, profile, reports] =
     await Promise.all([
       supabase.from("mementos").select("*").eq("user_id", uid),
       supabase.from("routines").select("*").eq("user_id", uid),
-      supabase.from("tasks").select("*").eq("user_id", uid),
       supabase.from("objectives").select("*").eq("user_id", uid).eq("period", "monthly"),
       supabase.from("objectives").select("*").eq("user_id", uid).eq("period", "yearly"),
       supabase.from("quests").select("*").eq("user_id", uid),
@@ -53,17 +52,12 @@ export default async function DashboardPage() {
       supabase.from("finance_entries").select("*").eq("user_id", uid),
       supabase.from("financial_goals").select("*").eq("user_id", uid),
       supabase.from("dangers").select("*").eq("user_id", uid),
-      supabase.from("profiles").select("dashboard_order, dashboard_hub_sections").eq("id", uid).maybeSingle(),
+      supabase.from("profiles").select("dashboard_order").eq("id", uid).maybeSingle(),
       supabase.from("monthly_reports").select("*").eq("user_id", uid).order("month", { ascending: false }),
     ]);
 
   const mementoRows = (mementos.data ?? []) as Memento[];
   const routineRows = (routines.data ?? []) as Routine[];
-  const today = todayISO();
-  // Tasks visible on the board: hide those completed on a previous day (mirrors tasksService.listVisible).
-  const taskRows = ((tasks.data ?? []) as Task[]).filter(
-    (t) => !(t.done && t.completed_at && t.completed_at.slice(0, 10) < today),
-  );
   const monthlyRows = (monthly.data ?? []) as Objective[];
   const yearlyRows = (yearly.data ?? []) as Objective[];
   const questRows = (quests.data ?? []) as Quest[];
@@ -72,7 +66,6 @@ export default async function DashboardPage() {
   const finGoalRows = (finGoals.data ?? []) as FinancialGoal[];
   const dangerRows = (dangers.data ?? []) as Danger[];
   const dashboardOrder = (profile.data?.dashboard_order ?? []) as string[];
-  const hubVisible = (profile.data?.dashboard_hub_sections ?? HUB_SECTION_KEYS) as string[];
 
   // ----- Monthly report prompt (banner only; the report lives on /bilan) -----
   const reportRows = (reports.data ?? []) as MonthlyReportRow[];
@@ -81,21 +74,18 @@ export default async function DashboardPage() {
   const dayOfMonth = Number(todayISO().slice(8, 10));
   const showReviewBanner = dayOfMonth <= REVIEW_WINDOW_DAYS && !reviewDone;
 
-  // ----- « Journal de quêtes » — the 6 sub-points, filtered per resource -----
+  // ----- Routine (daily) -----
   const dailyRoutines = routineRows.filter((r) => (r.frequency ?? "daily") === "daily");
   const weeklyRoutines = routineRows.filter((r) => r.frequency === "weekly");
   const monthlyRoutines = routineRows.filter((r) => r.frequency === "monthly");
-  const tasksToday = taskRows.filter((t) => (t.scope ?? "today") !== "other");
-  const tasksOther = taskRows.filter((t) => (t.scope ?? "today") === "other");
-  const hubData: Record<string, { items: (Task | Routine | Quest)[]; resource: HubResource; withMinutes?: boolean }> = {
-    "tasks-today": { items: tasksToday, resource: "tasks", withMinutes: true },
-    "routine-daily": { items: dailyRoutines, resource: "routines" },
-    "tasks-other": { items: tasksOther, resource: "tasks", withMinutes: true },
-    "routine-weekly": { items: weeklyRoutines, resource: "routines" },
-    "routine-monthly": { items: monthlyRoutines, resource: "routines" },
-    "quests-special": { items: questRows, resource: "quests" },
-  };
-  const hubShown = HUB_SECTIONS.filter((s) => hubVisible.includes(s.key));
+  const otherRoutines = [...weeklyRoutines, ...monthlyRoutines];
+  const routineDone = dailyRoutines.filter((r) => r.done).length;
+  const routineTotal = dailyRoutines.length;
+  const routinePct = percentage(routineDone, routineTotal);
+
+  // ----- Quests -----
+  const questsDone = questRows.filter((q) => q.done).length;
+  const questsPct = percentage(questsDone, questRows.length);
 
   // ----- Finance (current month) — recurring entries count every month -----
   const oneOff = financeRows.filter((e) => !e.recurring);
@@ -127,45 +117,6 @@ export default async function DashboardPage() {
 
   // ----- Reorderable dashboard blocks (order synced to the profile) -----
   const sections: DashSection[] = [
-    {
-      key: "journal-hub",
-      label: "🗺️ Journal de quêtes",
-      node: (
-        <div className="card">
-          <div className="card-head">
-            <div>
-              <h3 className="card-title">🗺️ Journal de quêtes</h3>
-              <p className="card-sub">Tes tâches et quêtes du moment.</p>
-            </div>
-            <ManageLink href="/journal" />
-          </div>
-          {hubShown.length === 0 ? (
-            <Empty icon="🗺️" text="Aucun point affiché — choisis-en depuis le Journal." href="/journal" />
-          ) : (
-            <div className="hub-blocks">
-              {hubShown.map((s) => {
-                const data = hubData[s.key];
-                if (!data) return null;
-                const done = data.items.filter((i) => i.done).length;
-                return (
-                  <div className="hub-block" key={s.key}>
-                    <div className="hub-block-head">
-                      <span className="hub-block-title">{s.icon} {s.label}</span>
-                      {data.items.length > 0 && <span className="hub-block-count">{done}/{data.items.length}</span>}
-                    </div>
-                    {data.items.length ? (
-                      <DashboardCheckList resource={data.resource} items={data.items} withMinutes={data.withMinutes} />
-                    ) : (
-                      <p className="hub-block-empty">Rien ici pour l’instant.</p>
-                    )}
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      ),
-    },
     {
       key: "memento",
       label: "📝 Memento",
@@ -226,6 +177,51 @@ export default async function DashboardPage() {
       ),
     },
     {
+      key: "daily-quests",
+      label: "🗓️ Quêtes quotidiennes",
+      node: (
+        <div className="card">
+          <div className="card-head">
+            <div>
+              <h3 className="card-title">🗓️ Quêtes quotidiennes</h3>
+              <p className="card-sub">
+                Progression : <strong>{routinePct}%</strong> · {routineDone}/{routineTotal} faites
+              </p>
+            </div>
+            <ManageLink href="/routine" />
+          </div>
+          <div className="big-bar"><div className="big-bar-fill" style={{ width: `${routinePct}%` }} /></div>
+          <div style={{ marginTop: 12 }}>
+            {dailyRoutines.length ? (
+              <DashboardCheckList resource="routines" items={dailyRoutines} />
+            ) : (
+              <Empty icon="🗓️" text="Aucune quête quotidienne." href="/routine" />
+            )}
+          </div>
+        </div>
+      ),
+    },
+    ...(otherRoutines.length > 0
+      ? [{
+          key: "other-routines",
+          label: "📅 Quêtes hebdo & mensuelles",
+          node: (
+            <div className="card">
+              <div className="card-head">
+                <div>
+                  <h3 className="card-title">📅 Quêtes hebdo &amp; mensuelles</h3>
+                  <p className="card-sub">{otherRoutines.filter((r) => r.done).length}/{otherRoutines.length} faites</p>
+                </div>
+                <ManageLink href="/routine" />
+              </div>
+              <div style={{ marginTop: 12 }}>
+                <DashboardRoutineTabs weekly={weeklyRoutines} monthly={monthlyRoutines} />
+              </div>
+            </div>
+          ),
+        } as DashSection]
+      : []),
+    {
       key: "monthly-objectives",
       label: "🎯 Objectifs du mois",
       node: (
@@ -262,6 +258,29 @@ export default async function DashboardPage() {
           ) : (
             <Empty icon="🗓️" text="Aucun objectif de l’année." href="/objectives" />
           )}
+        </div>
+      ),
+    },
+    {
+      key: "special-quests",
+      label: "⚔️ Quêtes spéciales",
+      node: (
+        <div className="card">
+          <div className="card-head">
+            <div>
+              <h3 className="card-title">⚔️ Quêtes spéciales</h3>
+              <p className="card-sub">Progression : <strong>{questsPct}%</strong></p>
+            </div>
+            <ManageLink href="/quests" />
+          </div>
+          <div className="big-bar"><div className="big-bar-fill" style={{ width: `${questsPct}%` }} /></div>
+          <div style={{ marginTop: 12 }}>
+            {questRows.length ? (
+              <DashboardCheckList resource="quests" items={questRows} />
+            ) : (
+              <Empty icon="⚔️" text="Aucune quête spéciale." href="/quests" />
+            )}
+          </div>
         </div>
       ),
     },
