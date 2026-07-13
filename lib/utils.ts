@@ -157,3 +157,96 @@ export function formatRelative(ts: string | number): string {
   if (diff < 86400) return `il y a ${Math.floor(diff / 3600)} h`;
   return d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" });
 }
+
+// =====================================================================
+// Échéances / retard (« overdue ») — calculé en heure LOCALE de l'utilisateur
+// pour que « avant minuit » corresponde à son minuit. Utilisé côté client.
+// =====================================================================
+export type RoutineFrequency = "daily" | "weekly" | "monthly";
+
+function startOfDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate());
+}
+/** Start of the ISO week (Monday 00:00) containing d. */
+function startOfWeek(d: Date): Date {
+  const s = startOfDay(d);
+  const mondayOffset = (s.getDay() + 6) % 7; // Sun=0 → 6, Mon=1 → 0 …
+  s.setDate(s.getDate() - mondayOffset);
+  return s;
+}
+function startOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+/** Start of the period *before* the one containing `now`, for a frequency. */
+export function previousPeriodStart(now: Date, freq: RoutineFrequency): Date {
+  if (freq === "weekly") {
+    const s = startOfWeek(now);
+    s.setDate(s.getDate() - 7);
+    return s;
+  }
+  if (freq === "monthly") {
+    const s = startOfMonth(now);
+    s.setMonth(s.getMonth() - 1);
+    return s;
+  }
+  const s = startOfDay(now);
+  s.setDate(s.getDate() - 1);
+  return s;
+}
+
+/** Start of the current period containing `now`, for a frequency. */
+export function currentPeriodStart(now: Date, freq: RoutineFrequency): Date {
+  return freq === "weekly" ? startOfWeek(now) : freq === "monthly" ? startOfMonth(now) : startOfDay(now);
+}
+
+/**
+ * Whether an item is overdue (should show red) at `now`.
+ *  - tasks (scope "today"): overdue once the day it was created has fully passed.
+ *  - tasks (scope "other"): overdue once its custom `deadline` has passed.
+ *  - routines: overdue when not done and the PREVIOUS period ended without a
+ *    completion (uses completed_at, falling back to created_at).
+ * Done items are never overdue.
+ */
+export function isItemOverdue(
+  resource: string,
+  item: {
+    done?: boolean | null;
+    created_at?: string | null;
+    completed_at?: string | null;
+    deadline?: string | null;
+    scope?: string | null;
+    frequency?: string | null;
+  },
+  now: Date = new Date(),
+): boolean {
+  if (item.done) return false;
+
+  if (resource === "tasks") {
+    if (item.scope === "other") {
+      return !!item.deadline && now.getTime() > new Date(item.deadline).getTime();
+    }
+    // "today" scope: due by the end of the day it was created for.
+    if (!item.created_at) return false;
+    return startOfDay(now).getTime() > startOfDay(new Date(item.created_at)).getTime();
+  }
+
+  if (resource === "routines") {
+    const freq = (item.frequency as RoutineFrequency) ?? "daily";
+    const refStr = item.completed_at ?? item.created_at;
+    if (!refStr) return false;
+    return new Date(refStr).getTime() < previousPeriodStart(now, freq).getTime();
+  }
+
+  return false; // quests & others: no deadline rule
+}
+
+/**
+ * A completed task moves to the "Done" category only the day *after* it was
+ * ticked — so it stays visible (checked) in its own category for the rest of
+ * that day. True once `completedAt` is on a strictly earlier day than `now`.
+ */
+export function isCompletedBeforeToday(completedAt: string | null | undefined, now: Date = new Date()): boolean {
+  if (!completedAt) return false;
+  return new Date(completedAt).getTime() < startOfDay(now).getTime();
+}

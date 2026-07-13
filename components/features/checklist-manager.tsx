@@ -25,8 +25,23 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { api } from "@/lib/api-client";
 import { EmptyState } from "@/components/ui/empty-state";
+import { isItemOverdue } from "@/lib/utils";
 
 const CONTAINER_PREFIX = "container::";
+
+/** ISO datetime → value for a <input type="datetime-local"> (local time). */
+function isoToLocalInput(iso?: string | null): string {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  return new Date(d.getTime() - d.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
+}
+/** <input type="datetime-local"> value (local) → ISO string, or null if empty. */
+function localInputToIso(local: string): string | null {
+  if (!local) return null;
+  const d = new Date(local);
+  return isNaN(d.getTime()) ? null : d.toISOString();
+}
 
 interface Item {
   id: string;
@@ -38,6 +53,9 @@ interface Item {
   position?: number;
   frequency?: string;
   scope?: string;
+  created_at?: string;
+  completed_at?: string | null;
+  deadline?: string | null;
 }
 
 interface TabGroups {
@@ -51,14 +69,18 @@ interface EditDraft {
   description: string;
   minutes: string;
   category: string;
+  deadline: string;
 }
 
 interface RowProps {
   item: Item;
+  resource: string;
+  now: Date | null;
   editMode: boolean;
   withMinutes: boolean;
   withCategory: boolean;
   withDescription: boolean;
+  withDeadline: boolean;
   categoryOptions?: { group: string; options: string[] }[];
   togglable: boolean;
   onToggle: (item: Item) => void;
@@ -80,6 +102,8 @@ interface ChecklistManagerProps {
   withDescription?: boolean;
   /** When provided (with withCategory), the category field is a grouped dropdown instead of free text. */
   categoryOptions?: { group: string; options: string[] }[];
+  /** Adds a datetime deadline field, used by "other" tasks (scope='other'). */
+  withDeadline?: boolean;
   togglable?: boolean;
   reorderable?: boolean;
   groups?: TabGroups;
@@ -94,6 +118,7 @@ function RowInner({
   withMinutes,
   withCategory,
   withDescription,
+  withDeadline,
   categoryOptions,
   togglable,
   onToggle,
@@ -146,6 +171,10 @@ function RowInner({
             <input className="auth-input" style={{ flex: "1 1 120px" }} placeholder="Catégorie"
               value={editDraft.category} onChange={(e) => setEditDraft((d) => ({ ...d, category: e.target.value }))} />
           ) : null}
+          {withDeadline && item.scope === "other" && (
+            <input className="auth-input" type="datetime-local" style={{ flex: "1 1 190px" }} title="Échéance"
+              value={editDraft.deadline} onChange={(e) => setEditDraft((d) => ({ ...d, deadline: e.target.value }))} />
+          )}
           <button type="button" className="checklist-submit" onClick={onSaveEdit}>OK</button>
           <button type="button" className="secondary-btn" onClick={onCancelEdit}>Annuler</button>
         </div>
@@ -167,14 +196,16 @@ function RowInner({
         </button>
       )}
       <div className="task-body">
-        <span className="task-name">{item.name}</span>
+        <div className="task-title-row">
+          <span className="task-name">{item.name}</span>
+          {withCategory && item.category ? <span className="cat-tag">{item.category}</span> : null}
+        </div>
         {withDescription && item.description ? <span className="task-desc">{item.description}</span> : null}
-        {((withMinutes && item.minutes) || (withCategory && item.category)) && (
+        {withMinutes && item.minutes ? (
           <div className="task-meta">
-            {withMinutes && item.minutes ? <span className="task-mins">⏱️ {item.minutes} min</span> : null}
-            {withCategory && item.category ? <span className="cat-tag">{item.category}</span> : null}
+            <span className="task-mins">⏱️ {item.minutes} min</span>
           </div>
-        )}
+        ) : null}
       </div>
       {editMode && (
         <>
@@ -193,8 +224,9 @@ function RowInner({
 function SortableRow(props: RowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: props.item.id, disabled: !props.editMode });
   const style = { transform: CSS.Transform.toString(transform), transition, zIndex: isDragging ? 5 : undefined };
+  const overdue = props.now ? isItemOverdue(props.resource, props.item, props.now) : false;
   return (
-    <li ref={setNodeRef} style={style} className={`task-item${props.item.done ? " is-done" : ""}${isDragging ? " is-dragging" : ""}`}>
+    <li ref={setNodeRef} style={style} className={`task-item${props.item.done ? " is-done" : ""}${overdue ? " is-overdue" : ""}${isDragging ? " is-dragging" : ""}`}>
       {props.editMode && (
         <button type="button" className="task-grip" aria-label="Glisser pour réordonner" title="Glisser pour réordonner" {...attributes} {...listeners}>
           ⠿
@@ -236,6 +268,7 @@ export function ChecklistManager({
   withMinutes = false,
   withCategory = false,
   withDescription = false,
+  withDeadline = false,
   categoryOptions,
   togglable = true,
   reorderable = false,
@@ -250,13 +283,21 @@ export function ChecklistManager({
   const [description, setDescription] = useState("");
   const [minutes, setMinutes] = useState("");
   const [category, setCategory] = useState("");
+  const [deadline, setDeadline] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [activeTab, setActiveTab] = useState(groups?.tabs[0]?.value ?? "");
   const [addGroup, setAddGroup] = useState(groups?.tabs[0]?.value ?? "");
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [editDraft, setEditDraft] = useState<EditDraft>({ name: "", description: "", minutes: "", category: "" });
+  const [editDraft, setEditDraft] = useState<EditDraft>({ name: "", description: "", minutes: "", category: "", deadline: "" });
   const [editMode, setEditMode] = useState(false);
+  // Overdue is time-based; compute only after mount so SSR/CSR markup matches.
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    setNow(new Date());
+    const t = setInterval(() => setNow(new Date()), 60_000);
+    return () => clearInterval(t);
+  }, []);
 
   const sections = groups?.layout === "sections";
 
@@ -299,6 +340,7 @@ export function ChecklistManager({
       if (withDescription && description.trim()) payload.description = description.trim();
       if (withMinutes) payload.minutes = Number(minutes || 1);
       if (withCategory && category) payload.category = category;
+      if (withDeadline && groupTarget === "other") payload.deadline = localInputToIso(deadline);
       if (groups) payload[groups.field] = groupTarget;
       if (reorderable) payload.position = sections ? itemsOfGroup(groupTarget).length : displayItems.length;
       const created = await api.post<Item>(`/api/${resource}`, payload);
@@ -307,6 +349,7 @@ export function ChecklistManager({
       setDescription("");
       setMinutes("");
       setCategory("");
+      setDeadline("");
       router.refresh();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Erreur.");
@@ -343,7 +386,7 @@ export function ChecklistManager({
 
   function startEdit(item: Item) {
     setEditingId(item.id);
-    setEditDraft({ name: item.name, description: item.description ?? "", minutes: String(item.minutes ?? ""), category: item.category ?? "" });
+    setEditDraft({ name: item.name, description: item.description ?? "", minutes: String(item.minutes ?? ""), category: item.category ?? "", deadline: isoToLocalInput(item.deadline) });
   }
   function cancelEdit() {
     setEditingId(null);
@@ -357,6 +400,7 @@ export function ChecklistManager({
     if (withDescription) patch.description = editDraft.description.trim();
     if (withMinutes) patch.minutes = Number(editDraft.minutes || 0);
     if (withCategory) patch.category = editDraft.category || undefined;
+    if (withDeadline && item.scope === "other") patch.deadline = localInputToIso(editDraft.deadline);
     setItems((prev) => prev.map((i) => (i.id === item.id ? { ...i, ...patch } : i))); // optimistic
     setEditingId(null);
     try {
@@ -457,8 +501,9 @@ export function ChecklistManager({
   }
 
   const rowProps = {
+    resource, now,
     editMode,
-    withMinutes, withCategory, withDescription, categoryOptions, togglable,
+    withMinutes, withCategory, withDescription, withDeadline, categoryOptions, togglable,
     onToggle: toggle, onRemove: remove,
     editingId, editDraft, setEditDraft,
     onStartEdit: startEdit, onSaveEdit: saveEdit, onCancelEdit: cancelEdit,
@@ -512,6 +557,10 @@ export function ChecklistManager({
             {groups.tabs.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
           </select>
         )}
+        {withDeadline && groupTarget === "other" && (
+          <input className="auth-input" type="datetime-local" style={{ flex: "1 1 190px" }} title="Échéance (autres tâches)"
+            value={deadline} onChange={(e) => setDeadline(e.target.value)} />
+        )}
         <button className="checklist-submit" type="submit" disabled={busy}>{addLabel}</button>
         {withDescription && (
           <input
@@ -550,7 +599,7 @@ export function ChecklistManager({
       ) : (
         <ul className="checklist">
           {displayItems.map((item) => (
-            <li key={item.id} className={`task-item${item.done ? " is-done" : ""}`}>
+            <li key={item.id} className={`task-item${item.done ? " is-done" : ""}${now && isItemOverdue(resource, item, now) ? " is-overdue" : ""}`}>
               <RowInner item={item} {...rowProps} />
             </li>
           ))}

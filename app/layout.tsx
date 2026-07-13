@@ -1,5 +1,21 @@
 import type { Metadata, Viewport } from "next";
+import { Inter, Chakra_Petch } from "next/font/google";
 import "./globals.css";
+
+// Body / numbers: Inter — one of the most legible UI faces, keeps stats and
+// long text ergonomic. Titles: Chakra Petch — a semi-squared "game HUD / RPG"
+// display face that still reads cleanly. Both self-hosted by next/font.
+const inter = Inter({
+  subsets: ["latin"],
+  variable: "--font-body",
+  display: "swap",
+});
+const chakraPetch = Chakra_Petch({
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
+  variable: "--font-display",
+  display: "swap",
+});
 
 export const metadata: Metadata = {
   title: "Glow Up RPG — SaaS Dashboard",
@@ -20,7 +36,7 @@ const themeInit = `(function(){try{var t=localStorage.getItem('theme')||'dark';d
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="fr" suppressHydrationWarning>
+    <html lang="fr" className={`${inter.variable} ${chakraPetch.variable}`} suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeInit }} />
       </head>

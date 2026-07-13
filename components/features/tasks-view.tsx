@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { isItemOverdue } from "@/lib/utils";
 import {
   DndContext,
   PointerSensor,
@@ -23,22 +24,39 @@ const MODES: { value: TasksMode; label: string; icon: string }[] = [
   { value: "kanban", label: "Kanban", icon: "🗂️" },
 ];
 
-/** A single draggable task card (dragged by its grip handle). */
+/** A single draggable task card (dragged by its grip handle). Uses the app's
+ *  standard task-row look so Eisenhower/Kanban match the rest of the UI. */
 function TaskCard({ task, onToggle, onRemove }: { task: Task; onToggle: (t: Task) => void; onRemove: (t: Task) => void }) {
   const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id: task.id });
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => { setNow(new Date()); }, []);
+  const overdue = now ? isItemOverdue("tasks", task, now) : false;
   const style = {
     transform: CSS.Translate.toString(transform),
     opacity: isDragging ? 0.4 : 1,
+    zIndex: isDragging ? 5 : undefined,
+    touchAction: "none" as const,
   };
   return (
-    <div ref={setNodeRef} style={{ ...style, display: "flex", alignItems: "center", gap: 8, padding: "8px 10px", background: "var(--card, #fff)", border: "1px solid var(--line)", borderRadius: 8, marginBottom: 8 }}>
-      <span {...attributes} {...listeners} style={{ cursor: "grab", color: "var(--muted, #999)", touchAction: "none" }} title="Glisser">⠿</span>
-      <input type="checkbox" checked={!!task.done} onChange={() => onToggle(task)} />
-      <span style={{ flex: 1, textDecoration: task.done ? "line-through" : undefined, opacity: task.done ? 0.6 : 1 }}>
-        {task.name}
-        {task.minutes ? <span className="card-sub"> · ⏱️ {task.minutes} min</span> : null}
-      </span>
-      <button className="secondary-btn" title="Supprimer" onClick={() => onRemove(task)}>✕</button>
+    <div ref={setNodeRef} style={style} className={`task-item${task.done ? " is-done" : ""}${overdue ? " is-overdue" : ""}${isDragging ? " is-dragging" : ""}`}>
+      <button type="button" className="task-grip" {...attributes} {...listeners} aria-label="Glisser" title="Glisser pour déplacer">⠿</button>
+      <button
+        type="button"
+        className={`task-check${task.done ? " checked" : ""}`}
+        onClick={() => onToggle(task)}
+        role="checkbox"
+        aria-checked={!!task.done}
+        aria-label={task.done ? "Marquer comme non fait" : "Marquer comme fait"}
+      >
+        ✓
+      </button>
+      <div className="task-body">
+        <span className="task-name">{task.name}</span>
+        {task.minutes ? (
+          <div className="task-meta"><span className="task-mins">⏱️ {task.minutes} min</span></div>
+        ) : null}
+      </div>
+      <button type="button" className="task-del" onClick={() => onRemove(task)} aria-label="Supprimer" title="Supprimer">✕</button>
     </div>
   );
 }
@@ -72,7 +90,7 @@ function DropZone({ id, title, hint, accent, children, onAdd }: {
         <div style={{ fontWeight: 600 }}>{title}</div>
         {hint && <div className="card-sub">{hint}</div>}
       </div>
-      <div style={{ flex: 1 }}>{children}</div>
+      <div style={{ flex: 1, display: "flex", flexDirection: "column", gap: 6 }}>{children}</div>
       <form
         onSubmit={(e) => { e.preventDefault(); if (name.trim()) { onAdd(name.trim()); setName(""); } }}
         style={{ marginTop: 8 }}
@@ -142,9 +160,9 @@ export function TasksView({ initialItems, initialMode }: { initialItems: Task[];
 
   return (
     <div style={{ display: "grid", gap: 16 }}>
-      <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+      <div className="section-tabs">
         {MODES.map((m) => (
-          <button key={m.value} className={`secondary-btn${mode === m.value ? " active" : ""}`} onClick={() => changeMode(m.value)}>
+          <button key={m.value} type="button" className={`tab${mode === m.value ? " active" : ""}`} onClick={() => changeMode(m.value)}>
             {m.icon} {m.label}
           </button>
         ))}
@@ -176,6 +194,7 @@ function ClassicBoard({ initialItems }: { initialItems: Task[] }) {
       resource="tasks"
       initialItems={initialItems}
       withMinutes
+      withDeadline
       reorderable
       groups={{
         field: "scope",
