@@ -3,7 +3,7 @@ import { getCurrentUser } from "@/lib/supabase/server";
 import { AppShell } from "@/components/layout/app-shell";
 import { userService } from "@/server/users/user.service";
 import { statsService } from "@/server/stats/stats.service";
-import { settleDay } from "@/server/settlement/settlement.service";
+import { settleDay, resetRecurringRoutines } from "@/server/settlement/settlement.service";
 import { categoryAverage } from "@/lib/utils";
 
 export default async function AppLayout({ children }: { children: React.ReactNode }) {
@@ -13,10 +13,11 @@ export default async function AppLayout({ children }: { children: React.ReactNod
   const profile = await userService.getProfile(user.id);
   if (!profile) redirect("/login");
 
-  // Daily settlement: penalise tasks left undone on previous days. Idempotent
-  // per day; never block rendering if it fails.
+  // Daily settlement: penalise tasks left undone on previous days + reset
+  // recurring quests whose period has rolled over. Both idempotent; never block
+  // rendering if they fail.
   try {
-    await settleDay(user.id);
+    await Promise.all([settleDay(user.id), resetRecurringRoutines(user.id)]);
   } catch {
     /* ignore — settlement is best-effort */
   }

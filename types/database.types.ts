@@ -47,6 +47,7 @@ export interface Database {
           equipped_badge: string | null;
           equipped_accent: string | null;
           dashboard_order: string[];
+          dashboard_hub_sections: string[];
           created_at: string;
           updated_at: string;
         },
@@ -72,6 +73,7 @@ export interface Database {
           equipped_badge?: string | null;
           equipped_accent?: string | null;
           dashboard_order?: string[];
+          dashboard_hub_sections?: string[];
         },
         Partial<{
           email: string | null;
@@ -94,6 +96,7 @@ export interface Database {
           equipped_badge: string | null;
           equipped_accent: string | null;
           dashboard_order: string[];
+          dashboard_hub_sections: string[];
         }>
       >;
       stats: Tbl<
@@ -112,14 +115,14 @@ export interface Database {
         Partial<{ name: string; category: string; done: boolean; position: number }>
       >;
       routines: Tbl<
-        { id: string; user_id: string; name: string; description: string; minutes: number; category: string; done: boolean; position: number; frequency: "daily" | "weekly" | "monthly" } & Timestamps,
-        { user_id: string; name: string; description?: string; minutes?: number; category?: string; done?: boolean; position?: number; frequency?: "daily" | "weekly" | "monthly" },
-        Partial<{ name: string; description: string; minutes: number; category: string; done: boolean; position: number; frequency: "daily" | "weekly" | "monthly" }>
+        { id: string; user_id: string; name: string; description: string; minutes: number; category: string; done: boolean; position: number; frequency: "daily" | "weekly" | "monthly"; completed_at: string | null } & Timestamps,
+        { user_id: string; name: string; description?: string; minutes?: number; category?: string; done?: boolean; position?: number; frequency?: "daily" | "weekly" | "monthly"; completed_at?: string | null },
+        Partial<{ name: string; description: string; minutes: number; category: string; done: boolean; position: number; frequency: "daily" | "weekly" | "monthly"; completed_at: string | null }>
       >;
       tasks: Tbl<
-        { id: string; user_id: string; name: string; minutes: number; category: string; done: boolean; position: number; scope: "today" | "other"; completed_at: string | null; urgent: boolean; important: boolean; status: "todo" | "doing" | "done"; penalized: boolean } & Timestamps,
-        { user_id: string; name: string; minutes?: number; category?: string; done?: boolean; position?: number; scope?: "today" | "other"; completed_at?: string | null; urgent?: boolean; important?: boolean; status?: "todo" | "doing" | "done"; penalized?: boolean },
-        Partial<{ name: string; minutes: number; category: string; done: boolean; position: number; scope: "today" | "other"; completed_at: string | null; urgent: boolean; important: boolean; status: "todo" | "doing" | "done"; penalized: boolean }>
+        { id: string; user_id: string; name: string; minutes: number; category: string; done: boolean; position: number; scope: "today" | "other"; completed_at: string | null; deadline: string | null; urgent: boolean; important: boolean; status: "todo" | "doing" | "done"; penalized: boolean } & Timestamps,
+        { user_id: string; name: string; minutes?: number; category?: string; done?: boolean; position?: number; scope?: "today" | "other"; completed_at?: string | null; deadline?: string | null; urgent?: boolean; important?: boolean; status?: "todo" | "doing" | "done"; penalized?: boolean },
+        Partial<{ name: string; minutes: number; category: string; done: boolean; position: number; scope: "today" | "other"; completed_at: string | null; deadline: string | null; urgent: boolean; important: boolean; status: "todo" | "doing" | "done"; penalized: boolean }>
       >;
       objectives: Tbl<
         { id: string; user_id: string; period: "monthly" | "yearly"; name: string; actions: string; progress: number; details: Json; position: number } & Timestamps,
