@@ -1,22 +1,28 @@
-<svg width="64" height="64" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+<svg width="64" height="64" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
   <defs>
-    <linearGradient id="glowGrad" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="phxBlue" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#5cf4ff"/>
+      <stop offset="1" stop-color="#0a5cf0"/>
+    </linearGradient>
+    <linearGradient id="phxBrd" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0" stop-color="#00f5ff"/>
-      <stop offset="1" stop-color="#008cff"/>
+      <stop offset="1" stop-color="#0866ec"/>
     </linearGradient>
-    <linearGradient id="steelGrad" x1="0.5" y1="0" x2="0.5" y2="1">
-      <stop offset="0" stop-color="#bff8ff"/>
-      <stop offset="0.45" stop-color="#00f5ff"/>
-      <stop offset="1" stop-color="#0072d6"/>
-    </linearGradient>
+    <clipPath id="phxClip"><rect x="4" y="4" width="92" height="92" rx="22"/></clipPath>
   </defs>
-  <rect x="5" y="5" width="54" height="54" rx="16" fill="#0a111c" stroke="url(#glowGrad)" stroke-width="3"/>
-  <g fill="url(#steelGrad)">
-    <path d="M30 21 C 26 13, 18.5 10, 11 12 C 17.5 14, 23 18, 28 23 Z"/>
-    <path d="M27 23 C 21.5 16.5, 13 16.5, 7 20.5 C 14 21, 19.5 24, 25 28 Z"/>
-    <path d="M42 30 C 42 22.5, 36 18.5, 29 20 C 21 21.5, 17 29, 19.5 36 C 21.5 42.5, 29 45.5, 36 42.5 C 40.5 40.5, 42 36, 42 31.5 Z"/>
-    <path d="M41 28.5 L 55 31.5 L 47.5 35.5 L 41 34.5 Z"/>
+  <rect x="4" y="4" width="92" height="92" rx="22" fill="#0a111c" stroke="url(#phxBrd)" stroke-width="2.5"/>
+  <g clip-path="url(#phxClip)">
+    <g transform="translate(5 6) scale(0.9)">
+      <g fill="url(#phxBlue)">
+        <path d="M42 10 L32 0 L42 12 Z"/>
+        <path d="M54 8 L49 0 L58 11 Z"/>
+        <path d="M64 12 L60 1 L68 13 Z"/>
+        <path d="M8 62 L11 30 L28 12 L50 8 L72 15 L82 30 L97 40 L76 48 L66 51 L61 74 L46 94 L26 88 L11 74 Z"/>
+      </g>
+      <path d="M50 8 L72 15 L42 25 Z" fill="#ffffff" opacity="0.10"/>
+      <path d="M46 94 L61 74 L50 78 L28 85 Z" fill="#000000" opacity="0.16"/>
+      <path d="M44 30 L68 35 L59 44 L44 40 Z" fill="#0a111c"/>
+      <path d="M48 32 L60 34.5 L54 37.5 Z" fill="#bff8ff"/>
+    </g>
   </g>
-  <path d="M30.5 27 L 39.5 29.8 L 38.3 31.9 L 30 30.6 Z" fill="#0a111c"/>
-  <circle cx="35.5" cy="29.4" r="1.15" fill="#d8fbff"/>
 </svg>

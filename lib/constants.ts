@@ -2,12 +2,10 @@
 
 export const NAV_ITEMS = [
   { section: "dashboard", icon: "🏠", label: "Tableau de bord" },
-  { section: "recap", icon: "📈", label: "Récap hebdo" },
-  { section: "bilan", icon: "📅", label: "Bilan mensuel" },
+  { section: "recap", icon: "📈", label: "Récap & bilan" },
   { section: "character", icon: "🧍‍♂️", label: "Personnage" },
   { section: "journal", icon: "🗺️", label: "Journal de quêtes" },
-  { section: "objectives", icon: "🎯", label: "Objectifs" },
-  { section: "projects", icon: "🚀", label: "Projets en cours" },
+  { section: "objectives", icon: "🎯", label: "Objectifs & projets" },
   { section: "finance", icon: "💰", label: "Finances" },
   { section: "sante", icon: "❤️", label: "Santé" },
   { section: "dangers", icon: "🧨", label: "Dangers" },

@@ -7,7 +7,8 @@ import { CustomStatsManager } from "@/components/features/custom-stats-manager";
 import { CharacterStats } from "@/components/features/character-stats";
 import { LevelHero } from "@/components/features/level-hero";
 import { CosmeticsManager } from "@/components/features/cosmetics-manager";
-import { levelFromXp, money, percentage, categoryAverage, todayISO } from "@/lib/utils";
+import { TaskStatsCard, type StatGroup } from "@/components/features/task-stats-card";
+import { levelFromXp, money, percentage, categoryAverage, todayISO, addDaysISO } from "@/lib/utils";
 import { STAT_CATEGORIES } from "@/lib/constants";
 import { workTime, formatMinutes } from "@/server/stats/worktime";
 
@@ -22,17 +23,13 @@ export default async function CharacterPage() {
   ]);
 
   // Aggregate data for the KPI overview (merged in from the old Statistiques page).
-  const [quests, routines, tasks, monthly, yearly, projects, finance, foods, goals, dangers] = await Promise.all([
+  const [quests, routines, tasks, finance, foods, goals] = await Promise.all([
     supabase.from("quests").select("*").eq("user_id", uid),
     supabase.from("routines").select("*").eq("user_id", uid),
     supabase.from("tasks").select("*").eq("user_id", uid),
-    supabase.from("objectives").select("*").eq("user_id", uid).eq("period", "monthly"),
-    supabase.from("objectives").select("*").eq("user_id", uid).eq("period", "yearly"),
-    supabase.from("projects").select("*").eq("user_id", uid),
     supabase.from("finance_entries").select("*").eq("user_id", uid),
     supabase.from("foods").select("*").eq("user_id", uid).eq("food_date", todayISO()),
     supabase.from("nutrition_goals").select("*").eq("user_id", uid).maybeSingle(),
-    supabase.from("dangers").select("*").eq("user_id", uid),
   ]);
 
   // Character score = mean of the 3 category averages (excludes standalone Énergie).
@@ -51,7 +48,30 @@ export default async function CharacterPage() {
   const questsDone = (quests.data ?? []).filter((q) => q.done).length;
   const routineDone = (routines.data ?? []).filter((r) => r.done).length;
   const routineTotal = (routines.data ?? []).length;
-  const objActive = (monthly.data?.length ?? 0) + (yearly.data?.length ?? 0) + (projects.data?.length ?? 0);
+
+  // ----- Task & quest statistics (done / to-do per period, server-computed so
+  // there's no client date math → hydration-safe). Done = by completion date,
+  // to-do = by creation date. Week = current ISO week; month/year = calendar. -----
+  const today = todayISO();
+  const dow = new Date(`${today}T00:00:00Z`).getUTCDay();
+  const weekStartISO = addDaysISO(today, -((dow + 6) % 7));
+  const monthStartISO = `${today.slice(0, 7)}-01`;
+  const yearStartISO = `${today.slice(0, 4)}-01-01`;
+  const countByPeriod = <T,>(rows: T[], dateOf: (t: T) => string | null | undefined) => {
+    const since = (start: string) => rows.filter((t) => { const d = dateOf(t); return !!d && d.slice(0, 10) >= start; }).length;
+    return { week: since(weekStartISO), month: since(monthStartISO), year: since(yearStartISO), total: rows.length };
+  };
+  const allTasks = tasks.data ?? [];
+  const allQuests = quests.data ?? [];
+  // Tasks + quests merged into one pool, each row tagged « tâche » / « quête ».
+  const asTask = (t: (typeof allTasks)[number]) => ({ id: t.id, name: t.name, kind: "tâche" as const, completed_at: t.completed_at, created_at: t.created_at, deadline: t.deadline, category: t.category });
+  const asQuest = (q: (typeof allQuests)[number]) => ({ id: q.id, name: q.name, kind: "quête" as const, completed_at: q.completed_at, created_at: q.created_at, category: q.category });
+  const doneItems = [...allTasks.filter((t) => t.done).map(asTask), ...allQuests.filter((q) => q.done).map(asQuest)];
+  const todoItems = [...allTasks.filter((t) => !t.done).map(asTask), ...allQuests.filter((q) => !q.done).map(asQuest)];
+  const statGroups: StatGroup[] = [
+    { key: "done", label: "✅ Faites", tone: "done", dateKind: "done", counts: countByPeriod(doneItems, (i) => i.completed_at), items: doneItems },
+    { key: "todo", label: "🕗 À faire", tone: "todo", dateKind: "todo", counts: countByPeriod(todoItems, (i) => i.created_at), items: todoItems },
+  ];
 
   const thisMonth = todayISO().slice(0, 7);
   const month = (finance.data ?? []).filter((e) => e.entry_date.slice(0, 7) === thisMonth && !e.recurring);
@@ -67,13 +87,10 @@ export default async function CharacterPage() {
   const work = await workTime(supabase, uid);
 
   const kpis = [
-    { label: "Niveau", value: level, trend: `Score ${avg}/100` },
     { label: "Quêtes complétées", value: `${questsDone}/${quests.data?.length ?? 0}`, trend: quests.data?.length ? `${percentage(questsDone, quests.data.length)}%` : "—" },
     { label: "Quêtes quotidiennes", value: `${routineDone}/${routineTotal}`, trend: routineTotal ? `${percentage(routineDone, routineTotal)}% faites` : "—" },
-    { label: "Objectifs / projets", value: objActive, trend: "actifs" },
     { label: "Budget (net du mois)", value: money(income - spent), trend: `Gagné ${money(income)} · dépensé ${money(spent)}` },
     { label: "Calories du jour", value: Math.round(calToday), trend: calGoal ? `objectif ${calGoal} kcal` : "objectif non défini" },
-    { label: "Dangers listés", value: dangers.data?.length ?? 0, trend: "à surveiller" },
     { label: "Tâches du jour", value: tasks.data?.length ?? 0, trend: `${(tasks.data ?? []).filter((t) => t.done).length} faites` },
     { label: "Temps de travail", value: formatMinutes(work.total), trend: `${formatMinutes(work.today)} aujourd'hui · ${formatMinutes(work.week)} / 7 j` },
   ];
@@ -101,6 +118,11 @@ export default async function CharacterPage() {
             <div className="kpi-trend">{k.trend}</div>
           </div>
         ))}
+      </div>
+
+      {/* ===== Statistiques des tâches & quêtes ===== */}
+      <div style={{ marginBottom: 16 }}>
+        <TaskStatsCard groups={statGroups} />
       </div>
 
       {/* ===== Caractéristiques (par catégorie) ===== */}

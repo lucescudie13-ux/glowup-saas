@@ -3426,3 +3426,107 @@ html[data-theme="light"] .hub-toggle.on .hub-toggle-state { background: rgba(8, 
 }
 .hub-block-empty { margin: 0; font-size: 13px; color: var(--muted); }
 html[data-theme="light"] .hub-block-count { background: rgba(8, 145, 178, 0.10); color: #0b5e75; }
+
+/* ===== Task statistics card (done / to-do counts + expandable list) ===== */
+.task-stat-tiles {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.task-stat-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 4px;
+  padding: 16px 18px;
+  border-radius: 16px;
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(12,20,31,0.92), rgba(7,12,20,0.94));
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, transform 0.05s ease, background 0.15s ease;
+}
+.task-stat-tile:active { transform: translateY(1px); }
+/* Done tile = cyan; À-faire tile = red (like the Dangers) so unfinished work stands out. */
+.task-stat-tile.is-done:hover { border-color: var(--cyan-deep); }
+.task-stat-tile.is-done.active { border-color: var(--cyan); background: linear-gradient(180deg, rgba(0,245,255,0.10), rgba(7,12,20,0.94)); }
+.task-stat-tile.is-todo { border-color: rgba(255,90,110,0.28); }
+.task-stat-tile.is-todo:hover { border-color: rgba(255,90,110,0.6); }
+.task-stat-tile.is-todo.active { border-color: var(--danger-soft); background: linear-gradient(180deg, rgba(255,90,110,0.12), rgba(7,12,20,0.94)); }
+.task-stat-value {
+  font-family: var(--font-display), var(--font-body), "Segoe UI", sans-serif;
+  font-size: 30px;
+  font-weight: 700;
+  line-height: 1;
+}
+.task-stat-tile.is-done .task-stat-value { color: var(--cyan-soft); }
+.task-stat-tile.is-todo .task-stat-value { color: var(--danger-soft); }
+.task-stat-label { font-size: 13px; color: var(--muted); }
+.task-stat-tile.is-todo .task-stat-label { color: var(--danger-soft); opacity: 0.85; }
+/* Red recap + red item names when the « à faire » panel is open. */
+.task-stat-detail.is-todo .task-recap-item { border-color: rgba(255,90,110,0.28); background: rgba(255,90,110,0.05); }
+.task-stat-detail.is-todo .task-recap-value { color: var(--danger-soft); }
+.task-stat-detail.is-todo .task-stat-name { color: var(--danger-soft); }
+/* « tâche » / « quête » type tag inside the list. */
+.item-kind {
+  font-size: 11px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border: 1px solid var(--line);
+  white-space: nowrap;
+}
+.item-kind.is-task { background: rgba(0,245,255,0.08); color: var(--cyan-soft); }
+.item-kind.is-quest { background: rgba(142,78,198,0.14); color: #c9a2ff; }
+html[data-theme="light"] .item-kind.is-quest { background: rgba(142,78,198,0.10); color: #6b3fa0; }
+.task-stat-detail { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); }
+.task-recap {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 12px;
+}
+.task-recap-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 12px 8px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: rgba(0,245,255,0.04);
+}
+.task-recap-value {
+  font-family: var(--font-display), var(--font-body), "Segoe UI", sans-serif;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--cyan-soft);
+}
+.task-recap-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.5px; text-align: center; }
+.task-stat-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+  max-height: 340px;
+  overflow-y: auto;
+}
+.task-stat-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 4px;
+  border-bottom: 1px solid var(--line);
+}
+.task-stat-row:last-child { border-bottom: 0; }
+.task-stat-name { font-weight: 600; color: var(--text-strong); }
+.task-stat-date { margin-left: auto; font-size: 12px; color: var(--cyan-soft); white-space: nowrap; }
+.task-stat-empty { padding: 12px 4px; color: var(--muted); font-size: 14px; }
+@media (max-width: 520px) {
+  .task-stat-date { margin-left: 0; flex-basis: 100%; }
+  .task-stat-row { flex-wrap: wrap; gap: 4px 10px; }
+  .task-recap { grid-template-columns: repeat(2, 1fr); }
+}

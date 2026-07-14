@@ -110,9 +110,9 @@ export interface Database {
         Partial<{ name: string; deltas: Json; action_date: string }>
       >;
       quests: Tbl<
-        { id: string; user_id: string; name: string; category: string; done: boolean; position: number } & Timestamps,
-        { user_id: string; name: string; category?: string; done?: boolean; position?: number },
-        Partial<{ name: string; category: string; done: boolean; position: number }>
+        { id: string; user_id: string; name: string; category: string; done: boolean; position: number; completed_at: string | null } & Timestamps,
+        { user_id: string; name: string; category?: string; done?: boolean; position?: number; completed_at?: string | null },
+        Partial<{ name: string; category: string; done: boolean; position: number; completed_at: string | null }>
       >;
       routines: Tbl<
         { id: string; user_id: string; name: string; description: string; minutes: number; category: string; done: boolean; position: number; frequency: "daily" | "weekly" | "monthly"; completed_at: string | null } & Timestamps,

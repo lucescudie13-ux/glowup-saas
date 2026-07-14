@@ -1,18 +1,22 @@
 import { getCurrentUser, createClient } from "@/lib/supabase/server";
 import { userService } from "@/server/users/user.service";
 import { PageHead } from "@/components/ui/page-head";
+import { MonthlyReport } from "@/components/features/monthly-report";
+import { RecapTabs } from "@/components/features/recap-tabs";
 import { workTime, workoutMinutes, formatMinutes } from "@/server/stats/worktime";
-import { actionXp, money, todayISO, addDaysISO, formatDayLabel } from "@/lib/utils";
+import { actionXp, money, todayISO, addDaysISO, formatDayLabel, monthLabel, prevMonthKey } from "@/lib/utils";
+import type { MonthlyReport as MonthlyReportRow, Objective } from "@/types";
 
-export default async function RecapPage() {
+export default async function RecapPage({ searchParams }: { searchParams: { view?: string } }) {
   const user = await getCurrentUser();
   const supabase = await createClient();
   const uid = user!.id;
 
   const today = todayISO();
   const weekStart = addDaysISO(today, -6); // 7-day window incl. today
+  const reviewMonth = prevMonthKey(today.slice(0, 7)); // month that just ended (for the bilan)
 
-  const [profile, work, tasksRes, workoutsRes, actionsRes, sleepRes, foodsRes, goalsRes, financeRes, measuresRes, reflRes] =
+  const [profile, work, tasksRes, workoutsRes, actionsRes, sleepRes, foodsRes, goalsRes, financeRes, measuresRes, reflRes, monthlyObjRes, yearlyObjRes, reportsRes] =
     await Promise.all([
       userService.getProfile(uid),
       workTime(supabase, uid),
@@ -25,7 +29,20 @@ export default async function RecapPage() {
       supabase.from("finance_entries").select("type, amount, entry_date, recurring").eq("user_id", uid),
       supabase.from("measurements").select("*").eq("user_id", uid).order("measure_date", { ascending: false }).limit(2),
       supabase.from("reflections").select("title, topic, created_at").eq("user_id", uid).gte("created_at", `${weekStart}T00:00:00`),
+      // ----- Monthly bilan data (merged in from the old /bilan page) -----
+      supabase.from("objectives").select("*").eq("user_id", uid).eq("period", "monthly"),
+      supabase.from("objectives").select("*").eq("user_id", uid).eq("period", "yearly"),
+      supabase.from("monthly_reports").select("*").eq("user_id", uid).order("month", { ascending: false }),
     ]);
+
+    // ----- Monthly bilan (Mensuel tab) -----
+    const monthlyObjRows = (monthlyObjRes.data ?? []) as Objective[];
+    const yearlyObjRows = (yearlyObjRes.data ?? []) as Objective[];
+    const reportRows = (reportsRes.data ?? []) as MonthlyReportRow[];
+    const currentReport = reportRows.find((r) => r.month === reviewMonth) ?? null;
+    const bilanHistory = reportRows
+      .filter((r) => r.month !== reviewMonth)
+      .map((r) => ({ month: r.month, label: monthLabel(r.month), review_notes: r.review_notes, next_goals: r.next_goals }));
 
   // Tasks completed this week
   const tasksDone = tasksRes.data ?? [];
@@ -105,10 +122,8 @@ export default async function RecapPage() {
   if (weightDelta != null) notes.push(weightDelta <= 0 ? `⚖️ Poids stable/en baisse (${weightDelta.toFixed(1)} kg).` : `⚖️ Poids +${weightDelta.toFixed(1)} kg depuis le dernier relevé.`);
   notes.push(`✨ +${xpWeek} XP gagnés cette semaine.`);
 
-  return (
-    <div className="page section active">
-      <PageHead title="Récap hebdo" sub={`Ton glow up du ${formatDayLabel(weekStart)} à aujourd'hui.`} />
-
+  const weekly = (
+    <>
       <div className="card" style={{ marginBottom: 16 }}>
         <div className="card-head"><h2 className="card-title">📈 Comment ça avance</h2></div>
         <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6 }}>
@@ -140,6 +155,25 @@ export default async function RecapPage() {
           </ul>
         )}
       </div>
+    </>
+  );
+
+  const monthly = (
+    <MonthlyReport
+      month={reviewMonth}
+      monthLabel={monthLabel(reviewMonth)}
+      report={currentReport ? { month: currentReport.month, review_notes: currentReport.review_notes, next_goals: currentReport.next_goals } : null}
+      monthlyObjectives={monthlyObjRows}
+      yearlyObjectives={yearlyObjRows}
+      history={bilanHistory}
+      collapsible={false}
+    />
+  );
+
+  return (
+    <div className="page section active">
+      <PageHead title="Récap & bilan" sub={`Ton hebdo du ${formatDayLabel(weekStart)} à aujourd'hui, et ton bilan mensuel.`} />
+      <RecapTabs initial={searchParams?.view === "mensuel" ? "mensuel" : "hebdo"} weekly={weekly} monthly={monthly} />
     </div>
   );
 }
